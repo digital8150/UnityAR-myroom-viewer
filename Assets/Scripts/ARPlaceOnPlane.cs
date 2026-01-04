@@ -22,6 +22,15 @@ public class ARPlaceOnPlane : MonoBehaviour
     void OnEnable() { EnhancedTouchSupport.Enable(); }
     void OnDisable() { EnhancedTouchSupport.Disable(); }
 
+    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    void Start()
+    {
+        if (arRaycastManager != null && infoText != null)
+        {
+            LogText("ARRaycast Manager Init.");
+        }
+    }
+
     void Update()
     {
         // 1. 경로가 없거나 현재 로딩 중이면 터치 무시
@@ -49,6 +58,47 @@ public class ARPlaceOnPlane : MonoBehaviour
                 }
             }
         }
+    }
+
+    public void OnLoadBtnClicked()
+    {
+        if (NativeFilePicker.IsFilePickerBusy())
+        {
+            LogText("파일 선택기가 바쁨");
+            return;
+        }
+
+        LogText("파일 선택기 열기...");
+
+        try
+        {
+            NativeFilePicker.PickFile((path) =>
+            {
+                if (path == null)
+                {
+                    LogText("파일 선택 취소함");
+                }
+                else if (!path.ToLower().EndsWith(".gltf") && !path.ToLower().EndsWith(".glb"))
+                {
+                    LogText("지원하지 않는 파일 형식: " + path);
+                }
+                else
+                {
+                    // glTFast는 로컬 경로 앞에 "file://" 붙여주는 게 안전함
+                    currentModelPath = "file://" + path;
+                    LogText("파일 선택됨: " + currentModelPath);
+
+                    // (선택사항) 기존 모델이 있으면 지우기
+                    if (activeModel != null) Destroy(activeModel);
+                    activeModel = null;
+                }
+            });
+        }
+        catch (System.Exception e)
+        {
+            LogText("파일 선택기 오류: " + e.Message);
+        }
+
     }
 
     private async void LoadModelAndPlace(Vector3 position, Quaternion rotation)
