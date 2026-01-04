@@ -39,18 +39,17 @@ public class ARPlaceOnPlane : MonoBehaviour
         if(ETouch.activeTouches.Count == 0) return;
 
         Finger finger = ETouch.activeFingers[0];
-
-        LogText("화면 터치 감지됨, 위치 확인 중...");
         if (arRaycastManager.Raycast(finger.currentTouch.screenPosition, hits, TrackableType.Planes))
         {
             Pose hitPose = hits[0].pose;
             if (activeModel == null)
             {
+                LogText("모델 로드 및 배치");
                 LoadModelAndPlace(hitPose.position, hitPose.rotation);
             }
             else
             {
-
+                LogText("기존 모델의 위치 갱신");
                 activeModel.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation);
             }
         }
