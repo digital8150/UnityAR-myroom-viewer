@@ -1,9 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using GLTFast;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
-using UnityEngine.UI;
-using GLTFast;
+
+using UnityEngine.InputSystem.EnhancedTouch;
+using ETouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 
 
@@ -22,7 +25,10 @@ public class ARPlaceOnPlane : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        
+        if(arRaycastManager != null && infoText != null)
+        {
+            LogText("ARRaycast Manager Init.");
+        }
     }
 
     // Update is called once per frame
@@ -30,52 +36,87 @@ public class ARPlaceOnPlane : MonoBehaviour
     {
         if (string.IsNullOrEmpty(currentModelPath)) return;
 
-        if (Input.touchCount == 0) return;
-        Touch touch = Input.GetTouch(0);
+        if(ETouch.activeTouches.Count == 0) return;
 
-        if(touch.phase == TouchPhase.Began)
+        Finger finger = ETouch.activeFingers[0];
+
+        LogText("화면 터치 감지됨, 위치 확인 중...");
+        if (arRaycastManager.Raycast(finger.currentTouch.screenPosition, hits, TrackableType.Planes))
         {
-            if(arRaycastManager.Raycast(touch.position, hits, TrackableType.Planes))
+            Pose hitPose = hits[0].pose;
+            if (activeModel == null)
             {
-                Pose hitPose = hits[0].pose;
-                if (activeModel == null)
-                {
-                    LoadModelAndPlace(hitPose.position, hitPose.rotation);
-                }
-                else
-                {
-                    activeModel.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation);
-                }
+                LoadModelAndPlace(hitPose.position, hitPose.rotation);
+            }
+            else
+            {
+
+                activeModel.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation);
             }
         }
+        else
+        {
+            LogText("평면을 찾지 못함");
+        }
 
+    }
+
+    void OnEnable()
+    {
+        EnhancedTouchSupport.Enable();
+    }
+
+    void OnDisable()
+    {
+        EnhancedTouchSupport.Disable();
     }
 
 
     public void OnLoadBtnClicked()
     {
-        string[] fileTypes = new string[] { "glb", "gltf" };
-        NativeFilePicker.PickFile((path) =>
+        if(NativeFilePicker.IsFilePickerBusy())
         {
-            if (path == null)
-            {
-                LogText("파일 선택 취소함");
-            }
-            else
-            {
-                // glTFast는 로컬 경로 앞에 "file://" 붙여주는 게 안전함
-                currentModelPath = "file://" + path;
-                LogText("파일 선택됨: " + currentModelPath);
+            LogText("파일 선택기가 바쁨");
+            return;
+        }
 
-                // (선택사항) 기존 모델이 있으면 지우기
-                if (activeModel != null) Destroy(activeModel);
-                activeModel = null;
-            }
-        }, fileTypes);
+        LogText("파일 선택기 열기...");
+
+        try
+        {
+            NativeFilePicker.PickFile((path) =>
+            {
+                if (path == null)
+                {
+                    LogText("파일 선택 취소함");
+                }
+                else if(!path.ToLower().EndsWith(".gltf") && !path.ToLower().EndsWith(".glb"))
+                {
+                    LogText("지원하지 않는 파일 형식: " + path);
+                }
+                else
+                {
+                    // glTFast는 로컬 경로 앞에 "file://" 붙여주는 게 안전함
+                    currentModelPath = "file://" + path;
+                    LogText("파일 선택됨: " + currentModelPath);
+
+                    // (선택사항) 기존 모델이 있으면 지우기
+                    if (activeModel != null) Destroy(activeModel);
+                    activeModel = null;
+                }
+            });
+        }
+        catch (System.Exception e)
+        {
+            LogText("파일 선택기 오류: " + e.Message);
+        }
+
     }
 
     private async void LoadModelAndPlace(Vector3 position, Quaternion rotation)
     {
+        LogText("glb 런타임 로드 중...");
+
         // 빈 오브젝트 생성
         GameObject parentObj = new GameObject("AR_Model_Instance");
         parentObj.transform.position = position;
