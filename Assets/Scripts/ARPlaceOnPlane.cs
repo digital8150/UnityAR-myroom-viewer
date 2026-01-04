@@ -2,16 +2,22 @@
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
+using UnityEngine.UI;
+using GLTFast;
+
 
 
 public class ARPlaceOnPlane : MonoBehaviour
 {
     [SerializeField]
     private ARRaycastManager arRaycastManager;
-    [SerializeField]
-    private GameObject objectToPlace;
 
-    GameObject spawnObject;
+    [SerializeField]
+    private Text infoText;
+
+    public string currentModelPath;
+    private GameObject activeModel; // 씬에 배치된 모델
+    private List<ARRaycastHit> hits = new List<ARRaycastHit>();
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -22,47 +28,85 @@ public class ARPlaceOnPlane : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (string.IsNullOrEmpty(currentModelPath)) return;
 
-    }
+        if (Input.touchCount == 0) return;
+        Touch touch = Input.GetTouch(0);
 
-    private void PlaceObjectByTouch()
-    {
-        if(Input.touchCount > 0)
+        if(touch.phase == TouchPhase.Began)
         {
-            Touch touch = Input.GetTouch(0);
-
-            List<ARRaycastHit> hits = new List<ARRaycastHit>();
             if(arRaycastManager.Raycast(touch.position, hits, TrackableType.Planes))
             {
-                Pose placementPose = hits[0].pose;
-                if (spawnObject == null)
+                Pose hitPose = hits[0].pose;
+                if (activeModel == null)
                 {
-                    spawnObject = Instantiate(objectToPlace, placementPose.position, placementPose.rotation);
+                    LoadModelAndPlace(hitPose.position, hitPose.rotation);
                 }
                 else
                 {
-                    spawnObject.transform.SetPositionAndRotation(placementPose.position, placementPose.rotation);
+                    activeModel.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation);
                 }
             }
         }
+
     }
 
-    private void UpdateCenterObject()
-    {
-        Vector3 screenCenter = Camera.current.ViewportToScreenPoint(new Vector3(0.5f, 0.5f));
-        
-        List<ARRaycastHit> hits = new List<ARRaycastHit>();
-        arRaycastManager.Raycast(screenCenter, hits, TrackableType.Planes);
 
-        if(hits.Count > 0)
+    public void OnLoadBtnClicked()
+    {
+        string[] fileTypes = new string[] { "glb", "gltf" };
+        NativeFilePicker.PickFile((path) =>
         {
-            Pose placementPose = hits[0].pose;
-            objectToPlace.SetActive(true);
-            objectToPlace.transform.SetPositionAndRotation(placementPose.position, placementPose.rotation);
+            if (path == null)
+            {
+                LogText("파일 선택 취소함");
+            }
+            else
+            {
+                // glTFast는 로컬 경로 앞에 "file://" 붙여주는 게 안전함
+                currentModelPath = "file://" + path;
+                LogText("파일 선택됨: " + currentModelPath);
+
+                // (선택사항) 기존 모델이 있으면 지우기
+                if (activeModel != null) Destroy(activeModel);
+                activeModel = null;
+            }
+        }, fileTypes);
+    }
+
+    private async void LoadModelAndPlace(Vector3 position, Quaternion rotation)
+    {
+        // 빈 오브젝트 생성
+        GameObject parentObj = new GameObject("AR_Model_Instance");
+        parentObj.transform.position = position;
+        parentObj.transform.rotation = rotation;
+
+        var gltf = new GltfImport();
+
+        // 로컬 파일 로드
+        bool success = await gltf.Load(currentModelPath);
+
+        if (success)
+        {
+            await gltf.InstantiateMainSceneAsync(parentObj.transform);
+            activeModel = parentObj;
+            LogText("모델 배치 완료");
         }
         else
         {
-            objectToPlace.SetActive(false);
+            LogText("모델 로드 실패");
+            Destroy(parentObj);
+        }
+    }
+
+    private void LogText(string content)
+    {
+#if UNITY_EDITOR
+        Debug.Log(content); 
+#endif
+        if (infoText != null)
+        {
+            infoText.text = content;
         }
     }
 }
