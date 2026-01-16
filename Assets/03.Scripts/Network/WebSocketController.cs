@@ -13,14 +13,8 @@ public class WebSocketController : MonoBehaviour
     [SerializeField]
     private string _serverUri = "ws://localhost:8080";
 
-    [SerializeField]
-    private int _receiveBufferSize = 1024;
-
-    [SerializeField]
-    private int _sendBufferSize = 1024;
-
     [Header("외부 컴포넌트 종속성")]
-    [SerializeField] private TextMeshProUGUI _text;
+    [SerializeField] private TextMeshProUGUI _logText;
 
     //--- Properties ---//
     public string ServerUri => _serverUri;
@@ -57,7 +51,9 @@ public class WebSocketController : MonoBehaviour
 
         byte[] buffer = Encoding.UTF8.GetBytes(message);
         await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, _cts.Token);
+
         Debug.Log($"메시지 전송: {message}");
+        WriteLog($"메세지 전송 : {message}");
     }
 
     //--- Private Methods ---//
@@ -118,9 +114,9 @@ public class WebSocketController : MonoBehaviour
 
     private void WriteLog(string message)
     {
-        if (_text != null)
+        if (_logText != null)
         {
-            _text.text += $"[{DateTime.Now}] : {message}\n";
+            _logText.text += $"[{DateTime.Now}] : {message}\n";
         }
     }
 
