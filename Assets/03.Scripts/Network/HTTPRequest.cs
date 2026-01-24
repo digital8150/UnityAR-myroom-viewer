@@ -10,10 +10,20 @@ public class HTTPRequest
     private readonly string _baseUrl;
     private readonly MonoBehaviour _coroutineRunner;
 
+    /// <summary>
+    /// HTTPRequest 생성자
+    /// </summary>
+    /// <param name="baseUrl">API 서버의 기본 경로</param>
+    /// <param name="coroutineRunner">코루틴 대리실행자</param>
     public HTTPRequest(string baseUrl, MonoBehaviour coroutineRunner)
     {
         _baseUrl = baseUrl;
         _coroutineRunner = coroutineRunner;
+    }
+
+    public void GetHealthCheck(Action<HealthCheckResponse> onSuccess, Action<string> onError)
+    {
+        _coroutineRunner.StartCoroutine(GetRequest<HealthCheckResponse>($"{_baseUrl}/health/", onSuccess, onError));
     }
 
     private IEnumerator GetRequest<T>(string url, Action<T> onSuccess, Action<string> onError)
