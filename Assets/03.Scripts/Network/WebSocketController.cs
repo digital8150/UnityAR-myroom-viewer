@@ -101,7 +101,7 @@ public class WebSocketController : MonoBehaviour
                     string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
                     // Unity 메인 스레드에서 실행되도록 주의 (로그는 안전함)
                     Debug.Log($"수신 메시지: {message}");
-                    WriteLog(message);
+                    UnityMainThreadDispatcher.Enqueue(() => WriteLog($"수신 메시지: {message}"));
                 }
             }
         }
