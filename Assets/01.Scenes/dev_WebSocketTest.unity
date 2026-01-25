@@ -1489,7 +1489,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 530c7d9131e7474439122d57befd297d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _inputField: {fileID: 2072402566}
+  _inputField: {fileID: 88067888}
   _webSocketController: {fileID: 416620046}
 --- !u!1 &1197172897
 GameObject:
