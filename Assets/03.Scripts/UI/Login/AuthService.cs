@@ -10,21 +10,26 @@ public class AuthService
     public async Task<long> Register(RegisterRequest data)
     {
         string json = JsonUtility.ToJson(data);
-        var request = await SendPost($"{BaseUrl}/api/auth/register", json);
-        return request.responseCode;
+        using(var request = await SendPost($"{BaseUrl}/api/auth/register", json))
+        {
+            return request.responseCode;
+        }
     }
 
     public async Task<(long code, string token)> Login(LoginRequest data)
     {
         string json = JsonUtility.ToJson(data);
-        var request = await SendPost($"{BaseUrl}/api/auth/login", json);
 
-        if (request.responseCode == 200)
+        using(var request = await SendPost($"{BaseUrl}/api/auth/login", json))
         {
-            var res = JsonUtility.FromJson<LoginResponse>(request.downloadHandler.text);
-            return (200, res.token);
+            if (request.responseCode == 200)
+            {
+                var responseJson = request.downloadHandler.text;
+                var loginResponse = JsonUtility.FromJson<LoginResponse>(responseJson);
+                return (request.responseCode, loginResponse.token);
+            }
+            return (request.responseCode, null);
         }
-        return (request.responseCode, null);
     }
 
     private async Task<UnityWebRequest> SendPost(string url, string json)

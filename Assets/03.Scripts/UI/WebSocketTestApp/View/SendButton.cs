@@ -6,7 +6,7 @@ public class SendButton : MonoBehaviour
     //--- Settings ---//
     [Header("외부 컴포넌트 종속성")]
     [SerializeField] private TMP_InputField _inputField;
-    [SerializeField] private WebSocketController _webSocketController;
+    [SerializeField] private WebsocketTestController _webSocketController;
 
     /// <summary>
     /// 버튼 클릭시 호출, 서버로 메세지 전송

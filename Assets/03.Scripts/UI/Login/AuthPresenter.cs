@@ -27,6 +27,7 @@ public class AuthPresenter
         if (code == 200)
         {
             JWTToken.Token = token;
+            await WebsocketController.Instance?.ConnectToServer();
             SceneManager.LoadScene("Home");
         }
         else
