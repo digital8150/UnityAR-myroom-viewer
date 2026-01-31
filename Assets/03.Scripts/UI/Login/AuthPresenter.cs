@@ -26,8 +26,7 @@ public class AuthPresenter
 
         if (code == 200)
         {
-            UnityEngine.PlayerPrefs.SetString("JWT_TOKEN", token); // 토큰 저장
-            Debug.Log($"로그인 성공! 토큰: {token}");
+            JWTToken.Token = token;
             SceneManager.LoadScene("Home");
         }
         else

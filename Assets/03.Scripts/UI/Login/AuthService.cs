@@ -17,7 +17,6 @@ public class AuthService
     public async Task<(long code, string token)> Login(LoginRequest data)
     {
         string json = JsonUtility.ToJson(data);
-        Debug.Log(json);
         var request = await SendPost($"{BaseUrl}/api/auth/login", json);
 
         if (request.responseCode == 200)

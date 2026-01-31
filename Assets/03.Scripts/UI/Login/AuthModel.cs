@@ -20,3 +20,8 @@ public class LoginResponse
 {
     public string token;
 }
+
+public class JWTToken
+{
+    public static string Token;
+}
