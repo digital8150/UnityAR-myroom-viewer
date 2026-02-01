@@ -45,9 +45,6 @@ public class WebsocketController : MonoBehaviour
     //--- Public Methods ---//
     public async Task ConnectToServer()
     {
-        _webSocket = new ClientWebSocket();
-        _cts = new CancellationTokenSource();
-
         try
         {
             var token = JWTToken.Token; // JWT 토큰 가져오기
@@ -56,6 +53,22 @@ public class WebsocketController : MonoBehaviour
                 Debug.LogError("JWT 토큰이 없습니다. 연결을 시도할 수 없습니다.");
                 return;
             }
+
+            if(_webSocket != null)
+            {
+                _cts?.Cancel();
+                if(_webSocket.State == WebSocketState.Open || _webSocket.State == WebSocketState.CloseReceived)
+                {
+                    await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+                }
+                _webSocket.Dispose();
+                _webSocket = null;
+                _cts?.Dispose();
+                _cts = null;
+            }
+            _webSocket = new ClientWebSocket();
+            _cts = new CancellationTokenSource();
+
             var uri = new Uri(_serverUri + Uri.EscapeDataString(token));
             await _webSocket.ConnectAsync(uri, _cts.Token);
             Debug.Log("웹소켓 연결 성공!");
@@ -108,24 +121,33 @@ public class WebsocketController : MonoBehaviour
         {
             while (_webSocket.State == WebSocketState.Open)
             {
-                var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
-
-                if (result.MessageType == WebSocketMessageType.Close)
+                WebSocketReceiveResult result;
+                using var ms = new System.IO.MemoryStream();
+                do
                 {
-                    await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, _cts.Token);
-                    Debug.Log("서버에서 연결 종료 요청");
-                }
-                else
-                {
-                    string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    // Unity 메인 스레드에서 실행되도록 주의 (로그는 안전함)
-                    Debug.Log($"수신 메시지: {message}");
-                    UnityMainThreadDispatcher.Enqueue(() =>
+                    result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
+                    if(result.MessageType == WebSocketMessageType.Close)
                     {
-                        // 여기에 메인 스레드에서 실행할 코드를 작성
-                    });
+                        await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+                        Debug.Log("서버가 연결을 닫았습니다.");
+                        break;
+                    }
+                    ms.Write(buffer, 0, result.Count);
+                }while (!result.EndOfMessage);
+                if(result.MessageType == WebSocketMessageType.Close)
+                {
+                    continue;
                 }
+
+                string message = Encoding.UTF8.GetString(ms.ToArray());
+                Debug.Log($"수신 메세지 : {message}");
+                UnityMainThreadDispatcher.Enqueue(() =>
+                {
+                    // 여기에 메인 스레드에서 실행할 코드를 작성하세요.
+                    // 예: UI 업데이트 등
+                });
             }
+
         }
         catch (Exception e)
         {
