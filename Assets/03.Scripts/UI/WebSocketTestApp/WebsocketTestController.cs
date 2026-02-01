@@ -31,11 +31,29 @@ public class WebsocketTestController : MonoBehaviour
 
     private async void OnApplicationQuit()
     {
-        if (_webSocket != null)
+        if(_webSocket == null)
         {
-            _cts.Cancel();
-            await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "App Quit", CancellationToken.None);
-            _webSocket.Dispose();
+            return;
+        }
+
+        try
+        {
+            _cts?.Cancel();
+            if(_webSocket.State == WebSocketState.Open || _webSocket.State == WebSocketState.CloseReceived)
+            {
+                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"종료 에러: {e.Message}");
+        }
+        finally
+        {
+            _webSocket?.Dispose();
+            _webSocket = null;
+            _cts?.Dispose();
+            _cts = null;
             Debug.Log("웹소켓 연결 종료");
         }
     }
@@ -45,15 +63,26 @@ public class WebsocketTestController : MonoBehaviour
     /// 웹소켓 서버로 메시지를 전송합니다.
     /// </summary>
     /// <param name="message">메시지</param>
-    public async void SendMessageToServer(string message)
+    public async Task SendMessageToServer(string message)
     {
+        if(string.IsNullOrEmpty(message))
+        {
+            Debug.LogWarning("전송할 메시지가 비어있습니다.");
+            return;
+        }
+
         if (_webSocket == null || _webSocket.State != WebSocketState.Open) return;
 
-        byte[] buffer = Encoding.UTF8.GetBytes(message);
-        await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, _cts.Token);
-
-        Debug.Log($"메시지 전송: {message}");
-        WriteLog($"메세지 전송 : {message}");
+        try
+        {
+            byte[] buffer = Encoding.UTF8.GetBytes(message);
+            await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, _cts.Token);
+            Debug.Log($"전송 메시지: {message}");
+        }
+        catch(Exception e)
+        {
+            Debug.LogError($"전송 에러: {e.Message}");
+        }
     }
 
     //--- Private Methods ---//
