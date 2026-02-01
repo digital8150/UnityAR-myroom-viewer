@@ -16,7 +16,7 @@ public class SendButton : MonoBehaviour
         string message = _inputField?.text;
         if (_webSocketController != null)
         {
-            _webSocketController.SendMessageToServer(message);
+            _ = _webSocketController.SendMessageToServer(message);
         }
         else
         {
