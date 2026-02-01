@@ -68,6 +68,7 @@ public class WebsocketController : MonoBehaviour
             }
             _webSocket = new ClientWebSocket();
             _cts = new CancellationTokenSource();
+            _isDisposed = false;
 
             var uri = new Uri(_serverUri + Uri.EscapeDataString(token));
             await _webSocket.ConnectAsync(uri, _cts.Token);
