@@ -38,6 +38,7 @@ public class HTTPRequest
             }
             else
             {
+
                 string json = request.downloadHandler.text;
                 try
                 {

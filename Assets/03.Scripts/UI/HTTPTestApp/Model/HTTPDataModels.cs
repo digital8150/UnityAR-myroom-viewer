@@ -13,5 +13,4 @@ public class HealthCheckResponse
     {
         return JsonConvert.SerializeObject(this);
     }
-} 
-
+}
