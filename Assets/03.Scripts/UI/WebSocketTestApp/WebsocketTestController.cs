@@ -22,6 +22,7 @@ public class WebsocketTestController : MonoBehaviour
     //--- Fields ---//
     private ClientWebSocket _webSocket = null;
     private CancellationTokenSource _cts;
+    private bool _isDisposed = false;
 
     //--- Unity Methods ---//
     async void Start()
@@ -29,33 +30,14 @@ public class WebsocketTestController : MonoBehaviour
         await ConnectToServer();
     }
 
+    private async void OnDestroy()
+    {
+        await CleanupAsync();
+    }
+
     private async void OnApplicationQuit()
     {
-        if(_webSocket == null)
-        {
-            return;
-        }
-
-        try
-        {
-            _cts?.Cancel();
-            if(_webSocket.State == WebSocketState.Open || _webSocket.State == WebSocketState.CloseReceived)
-            {
-                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"종료 에러: {e.Message}");
-        }
-        finally
-        {
-            _webSocket?.Dispose();
-            _webSocket = null;
-            _cts?.Dispose();
-            _cts = null;
-            Debug.Log("웹소켓 연결 종료");
-        }
+        await CleanupAsync();
     }
 
     //--- Public Methods ---//
@@ -105,7 +87,10 @@ public class WebsocketTestController : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogError($"연결 에러: {e.Message}");
-            WriteLog($"연결 실패: {e.Message}");
+            _webSocket?.Dispose();
+            _webSocket = null;
+            _cts?.Dispose();
+            _cts = null;
         }
     }
 
@@ -149,5 +134,34 @@ public class WebsocketTestController : MonoBehaviour
         }
     }
 
+    private async Task CleanupAsync()
+    {
+        if (_isDisposed || _webSocket == null)
+        {
+            return;
+        }
+        _isDisposed = true;
+
+        try
+        {
+            _cts?.Cancel();
+            if (_webSocket.State == WebSocketState.Open || _webSocket.State == WebSocketState.CloseReceived)
+            {
+                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"정리 에러: {e.Message}");
+        }
+        finally
+        {
+            _webSocket?.Dispose();
+            _webSocket = null;
+            _cts?.Dispose();
+            _cts = null;
+            Debug.Log("웹소켓 정리 완료");
+        }
+    }
 
 }
