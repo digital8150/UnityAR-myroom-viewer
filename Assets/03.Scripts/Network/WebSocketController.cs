@@ -16,6 +16,8 @@ public class WebsocketController : MonoBehaviour
     private ClientWebSocket _webSocket = null;
     private CancellationTokenSource _cts;
     private bool _isDisposed = false;
+    private string _userId = null;
+
 
     private void Awake()
     {
@@ -31,6 +33,7 @@ public class WebsocketController : MonoBehaviour
         try
         {
             var token = JWTToken.Token;
+            _userId = Utils.JWTUtils.GetUserId();
             if (string.IsNullOrEmpty(token)) return;
 
             await CleanupAsync();
@@ -49,6 +52,15 @@ public class WebsocketController : MonoBehaviour
             // 2. STOMP CONNECT 프레임 전송 (이게 없으면 서버가 응답 안 함)
             await SendStompConnect();
 
+            // 3. 메세지 채널 구독
+            if (!string.IsNullOrEmpty(_userId))
+            {
+                await SubscribeAsync($"/topic/model3d/{_userId}"); // 개인 알림
+            }
+            await SubscribeAsync("/topic/model3d/all"); // 전체 알림
+            await SubscribeAsync("/topic/test");        // 테스트 응답
+            await SubscribeAsync("/topic/pong");        // 퐁 응답
+
             _ = ReceiveLoop();
         }
         catch (Exception e)
@@ -58,12 +70,17 @@ public class WebsocketController : MonoBehaviour
         }
     }
 
-    private async Task SendStompConnect()
+    public async Task SubscribeAsync(string destination)
     {
-        // StompHelper가 있다면 StompHelper.CreateConnectFrame() 사용 가능
-        // 직접 구성 시: CONNECT\naccept-version:1.1,1.2\nheart-beat:10000,10000\n\n\0
-        string connectFrame = "CONNECT\naccept-version:1.1,1.0\nheart-beat:0,0\n\n\0";
-        await SendRawMessage(connectFrame);
+        if (_webSocket?.State != WebSocketState.Open) return;
+
+        // 구독 ID는 고유해야 하므로 목적지 이름을 기반으로 생성하거나 GUID 사용
+        string subId = "sub-" + destination.GetHashCode();
+
+        string stompFrame = $"SUBSCRIBE\nid:{subId}\ndestination:{destination}\nack:auto\n\n\0";
+
+        await SendRawMessage(stompFrame);
+        Debug.Log($"[STOMP Subscribe]: {destination}");
     }
 
     // 기존 컴포넌트 호환용 (STOMP SEND 프레임으로 래핑)
@@ -75,6 +92,14 @@ public class WebsocketController : MonoBehaviour
         // destination은 서버 설정에 따라 /app/hello 등으로 수정 필요
         string stompFrame = $"SEND\ndestination:/app/message\ncontent-type:text/plain\n\n{message}\0";
         await SendRawMessage(stompFrame);
+    }
+
+    private async Task SendStompConnect()
+    {
+        // StompHelper가 있다면 StompHelper.CreateConnectFrame() 사용 가능
+        // 직접 구성 시: CONNECT\naccept-version:1.1,1.2\nheart-beat:10000,10000\n\n\0
+        string connectFrame = "CONNECT\naccept-version:1.1,1.0\nheart-beat:0,0\n\n\0";
+        await SendRawMessage(connectFrame);
     }
 
     private async Task SendRawMessage(string rawData)
