@@ -38,7 +38,10 @@ public class Generate3DPresenter
                 {
                     //선택 완료 이후 로직
                     Debug.Log($"선택된 파일 경로: {path}");
+                    PopupView.Instance.Presenter.OnPopupYesClicked += UserConfirmedGeneration;
+                    PopupView.Instance.Presenter.OnPopupNoClicked += UserDeniedGeneration;
 
+                    PopupView.Instance.ShowYesNoMessage("선택한 이미지를 3D 모델로 변환하시겠습니까?");
                 }
             });
         }
@@ -58,5 +61,19 @@ public class Generate3DPresenter
     {
         string lowerPath = path.ToLower();
         return lowerPath.EndsWith(".png") || lowerPath.EndsWith(".jpg") || lowerPath.EndsWith(".jpeg");
+    }
+
+    private void UserConfirmedGeneration()
+    {
+        PopupView.Instance.Presenter.OnPopupYesClicked -= UserConfirmedGeneration;
+        PopupView.Instance.Presenter.OnPopupNoClicked -= UserDeniedGeneration;
+        Debug.Log("사용자가 3D 모델 생성을 확인했습니다.");
+    }
+
+    private void UserDeniedGeneration()
+    {
+        PopupView.Instance.Presenter.OnPopupYesClicked -= UserConfirmedGeneration;
+        PopupView.Instance.Presenter.OnPopupNoClicked -= UserDeniedGeneration;
+        Debug.Log("사용자가 3D 모델 생성을 거부했습니다.");
     }
 }

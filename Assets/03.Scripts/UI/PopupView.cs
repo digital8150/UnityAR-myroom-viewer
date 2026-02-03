@@ -12,11 +12,17 @@ public class PopupView : MonoBehaviour, IPopupView
 {
     public static PopupView Instance { get; private set; }
 
-    [SerializeField] private GameObject popupPanel;
-    [SerializeField] private TMP_Text popupMsg;
-    [SerializeField] private Button closeMsgBtn;
+    [Header("Pannels")]
+    [SerializeField] private GameObject _popupPanel, _okPanel, _yesNoPanel;
+
+    [Header("Texts")]
+    [SerializeField] private TMP_Text _popupMsg, _popupMsgYesNo;
+
+    [Header("Buttons")]
+    [SerializeField] private Button _closeMsgBtn, _yesBtn, _noBtn;
 
     private PopupPresenter _presenter;
+    public PopupPresenter Presenter => _presenter;
 
     private void Awake()
     {
@@ -31,25 +37,43 @@ public class PopupView : MonoBehaviour, IPopupView
             return;
         }
         _presenter = new PopupPresenter(this);
-        closeMsgBtn?.onClick.AddListener(_presenter.OnCloseMessageClicked);
+        _closeMsgBtn?.onClick.AddListener(_presenter.OnCloseMessageClicked);
+        _yesBtn?.onClick.AddListener(_presenter.OnYesClicked);
+        _noBtn?.onClick.AddListener(_presenter.OnNoClicked);
+
     }
 
     private void OnDestroy()
     {
-        closeMsgBtn?.onClick.RemoveAllListeners();
+        _closeMsgBtn?.onClick.RemoveAllListeners();
+        _yesBtn?.onClick.RemoveAllListeners();
+        _noBtn?.onClick.RemoveAllListeners();
     }
 
     public void ShowMessage(string msg)
     {
-        popupPanel?.SetActive(true);
-        if (popupMsg != null)
+        _popupPanel?.SetActive(true);
+        _okPanel?.SetActive(true);
+        if (_popupMsg != null)
         {
-            popupMsg.text = msg;
+            _popupMsg.text = msg;
         }
     }
 
     public void CloseMessage()
     {
-        popupPanel?.SetActive(false);
+        _popupPanel?.SetActive(false);
+        _okPanel?.SetActive(false);
+        _yesNoPanel?.SetActive(false);
+    }
+
+    public void ShowYesNoMessage(string msg)
+    {
+        _popupPanel?.SetActive(true);
+        _yesNoPanel?.SetActive(true);
+        if (_popupMsgYesNo != null)
+        {
+            _popupMsgYesNo.text = msg;
+        }
     }
 }
