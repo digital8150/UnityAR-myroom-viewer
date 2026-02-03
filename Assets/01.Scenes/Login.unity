@@ -2871,7 +2871,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f648fc4c7db06c24aa87127a4e84433d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _serverUri: ws://home.codingbot.kr:8080/ws/websocket?token=
+  _serverUri: ws://home.codingbot.kr:8080/ws/websocket
 --- !u!4 &998486507
 Transform:
   m_ObjectHideFlags: 0
