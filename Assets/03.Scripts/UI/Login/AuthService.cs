@@ -5,12 +5,10 @@ using System.Text;
 
 public class AuthService
 {
-    private const string BaseUrl = "http://home.codingbot.kr:8080";
-
     public async Task<long> Register(RegisterRequest data)
     {
         string json = JsonUtility.ToJson(data);
-        using(var request = await SendPost($"{BaseUrl}/api/auth/register", json))
+        using(var request = await SendPost($"{Utils.Settings.BaseUrl}/api/auth/register", json))
         {
             return request.responseCode;
         }
@@ -20,7 +18,7 @@ public class AuthService
     {
         string json = JsonUtility.ToJson(data);
 
-        using(var request = await SendPost($"{BaseUrl}/api/auth/login", json))
+        using(var request = await SendPost($"{Utils.Settings.BaseUrl}/api/auth/login", json))
         {
             if (request.responseCode == 200)
             {

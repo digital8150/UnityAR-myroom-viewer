@@ -6,6 +6,7 @@ public interface IPopupView
 {
     void ShowMessage(string msg);
     void CloseMessage();
+    void ShowYesNoMessage(string msg);
 }
 
 public class PopupView : MonoBehaviour, IPopupView
@@ -41,6 +42,11 @@ public class PopupView : MonoBehaviour, IPopupView
         _yesBtn?.onClick.AddListener(_presenter.OnYesClicked);
         _noBtn?.onClick.AddListener(_presenter.OnNoClicked);
 
+    }
+
+    private void Start()
+    {
+        CloseMessage();
     }
 
     private void OnDestroy()

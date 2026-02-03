@@ -7,10 +7,9 @@ using UnityEngine;
 
 public class WebsocketController : MonoBehaviour
 {
-    //--- Settings ---//
     [Header("웹소켓 설정")]
     [SerializeField]
-    private string _serverUri = "http://home.codingbot.kr:8080/ws/info?token=";
+    private string _serverUri = "ws://home.codingbot.kr:8080/ws/websocket"; // SockJS를 위해 /websocket 명시
 
     public static WebsocketController Instance { get; private set; }
 
@@ -18,106 +17,75 @@ public class WebsocketController : MonoBehaviour
     private CancellationTokenSource _cts;
     private bool _isDisposed = false;
 
-    //--- Unity Methods ---//
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        if (Instance == null) { Instance = this; DontDestroyOnLoad(gameObject); }
+        else { Destroy(gameObject); }
     }
 
-    private async void OnDestroy()
-    {
-        await CleanupAsync();
-    }
+    private async void OnDestroy() { await CleanupAsync(); }
+    private async void OnApplicationQuit() { await CleanupAsync(); }
 
-    private async void OnApplicationQuit()
-    {
-        await CleanupAsync();
-    }
-
-    //--- Public Methods ---//
     public async Task ConnectToServer()
     {
         try
         {
-            var token = JWTToken.Token; // JWT 토큰 가져오기
-            if(string.IsNullOrEmpty(token))
-            {
-                Debug.LogError("JWT 토큰이 없습니다. 연결을 시도할 수 없습니다.");
-                return;
-            }
+            var token = JWTToken.Token;
+            if (string.IsNullOrEmpty(token)) return;
 
-            if(_webSocket != null)
-            {
-                _cts?.Cancel();
-                if(_webSocket.State == WebSocketState.Open || _webSocket.State == WebSocketState.CloseReceived)
-                {
-                    await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
-                }
-                _webSocket.Dispose();
-                _webSocket = null;
-                _cts?.Dispose();
-                _cts = null;
-            }
+            await CleanupAsync();
+
             _webSocket = new ClientWebSocket();
             _cts = new CancellationTokenSource();
             _isDisposed = false;
 
-            var uri = new Uri(_serverUri + Uri.EscapeDataString(token));
-            await _webSocket.ConnectAsync(uri, _cts.Token);
-            Debug.Log("웹소켓 연결 성공!");
+            // 1. URL 구성: SockJS 스타일의 타임스탬프와 토큰 결합
+            long t = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var fullUri = new Uri($"{_serverUri}?token={Uri.EscapeDataString(token)}&t={t}");
 
-            // 메시지 수신 루프 시작 (별도 Task)
+            await _webSocket.ConnectAsync(fullUri, _cts.Token);
+            Debug.Log("WebSocket Layer Connected!");
+
+            // 2. STOMP CONNECT 프레임 전송 (이게 없으면 서버가 응답 안 함)
+            await SendStompConnect();
+
             _ = ReceiveLoop();
         }
         catch (Exception e)
         {
             Debug.LogError($"연결 에러: {e.Message}");
-            _webSocket?.Dispose();
-            _webSocket = null;
-            _cts?.Dispose(); 
-            _cts = null;
+            await CleanupAsync();
         }
     }
 
-    /// <summary>
-    /// 웹소켓 서버로 메시지를 전송합니다.
-    /// </summary>
-    /// <param name="message">메시지</param>
+    private async Task SendStompConnect()
+    {
+        // StompHelper가 있다면 StompHelper.CreateConnectFrame() 사용 가능
+        // 직접 구성 시: CONNECT\naccept-version:1.1,1.2\nheart-beat:10000,10000\n\n\0
+        string connectFrame = "CONNECT\naccept-version:1.1,1.0\nheart-beat:0,0\n\n\0";
+        await SendRawMessage(connectFrame);
+    }
+
+    // 기존 컴포넌트 호환용 (STOMP SEND 프레임으로 래핑)
     public async Task SendMessageToServer(string message)
     {
-        if (string.IsNullOrEmpty(message))
-        {
-            Debug.LogWarning("전송할 메시지가 비어있습니다.");
-            return;
-        }
+        if (_webSocket?.State != WebSocketState.Open) return;
 
-        if (_webSocket == null || _webSocket.State != WebSocketState.Open) return;
-
-        try
-        {
-            byte[] buffer = Encoding.UTF8.GetBytes(message);
-            await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, _cts.Token);
-            Debug.Log($"전송 메시지: {message}");
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"전송 에러: {e.Message}");
-        }
+        // 일반 텍스트를 STOMP SEND 규격으로 변환
+        // destination은 서버 설정에 따라 /app/hello 등으로 수정 필요
+        string stompFrame = $"SEND\ndestination:/app/message\ncontent-type:text/plain\n\n{message}\0";
+        await SendRawMessage(stompFrame);
     }
 
-    //--- Private Methods ---//
+    private async Task SendRawMessage(string rawData)
+    {
+        byte[] buffer = Encoding.UTF8.GetBytes(rawData);
+        await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, _cts.Token);
+    }
+
     private async Task ReceiveLoop()
     {
-        byte[] buffer = new byte[1024 * 4];
-
+        byte[] buffer = new byte[1024 * 8];
         try
         {
             while (_webSocket.State == WebSocketState.Open)
@@ -127,62 +95,44 @@ public class WebsocketController : MonoBehaviour
                 do
                 {
                     result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
-                    if(result.MessageType == WebSocketMessageType.Close)
-                    {
-                        await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
-                        Debug.Log("서버가 연결을 닫았습니다.");
-                        break;
-                    }
                     ms.Write(buffer, 0, result.Count);
-                }while (!result.EndOfMessage);
-                if(result.MessageType == WebSocketMessageType.Close)
-                {
-                    continue;
-                }
+                } while (!result.EndOfMessage);
 
-                string message = Encoding.UTF8.GetString(ms.ToArray());
-                Debug.Log($"수신 메세지 : {message}");
-                UnityMainThreadDispatcher.Enqueue(() =>
-                {
-                    // 여기에 메인 스레드에서 실행할 코드를 작성하세요.
-                    // 예: UI 업데이트 등
-                });
+                string rawMessage = Encoding.UTF8.GetString(ms.ToArray());
+
+                // STOMP 프레임 분석 (CONNECTED인지, MESSAGE인지 등)
+                ProcessStompMessage(rawMessage);
             }
+        }
+        catch (Exception e) { if (!_isDisposed) Debug.LogError($"수신 에러: {e.Message}"); }
+    }
 
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"수신 에러: {e.Message}");
-        }
+    private void ProcessStompMessage(string raw)
+    {
+        // 여기서 StompHelper.Parse(raw)를 사용하여 body만 추출 가능
+        Debug.Log($"[STOMP Received]: {raw}");
+
+        UnityMainThreadDispatcher.Enqueue(() => {
+            // 메인 스레드 로직 (UI 업데이트 등)
+        });
     }
 
     private async Task CleanupAsync()
     {
-        if (_isDisposed || _webSocket == null)
-        {
-            return;
-        }
+        if (_webSocket == null) return;
         _isDisposed = true;
-
         try
         {
-            _cts?.Cancel();
-            if (_webSocket.State == WebSocketState.Open || _webSocket.State == WebSocketState.CloseReceived)
-            {
-                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"정리 에러: {e.Message}");
+            if (_webSocket.State == WebSocketState.Open)
+                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
         }
         finally
         {
             _webSocket?.Dispose();
             _webSocket = null;
+            _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
-            Debug.Log("웹소켓 정리 완료");
         }
     }
 }
