@@ -32,7 +32,7 @@ public class AuthPresenter
         }
         else
         {
-            _view.ShowMessage($"아이디와 비밀번호를 확인하세요");
+            PopupView.Instance.ShowMessage($"아이디와 비밀번호를 확인하세요");
             Debug.Log($"로그인 실패! 상태 코드: {code}");
         }
     }
@@ -41,7 +41,7 @@ public class AuthPresenter
     {
         if (_view.Password != _view.PasswordConfirm)
         {
-            _view.ShowMessage("비밀번호 확인이 일치하지 않습니다.");
+            PopupView.Instance.ShowMessage("비밀번호 확인이 일치하지 않습니다.");
             return;
         }
 
@@ -57,10 +57,10 @@ public class AuthPresenter
         _view.SetLoading(false);
 
         if (code == 200) _view.ShowLoginPanel();
-        else if (code == 409) _view.ShowMessage("이미 존재하는 이메일입니다.");
+        else if (code == 409) PopupView.Instance.ShowMessage("이미 존재하는 이메일입니다.");
         else
         {
-            _view.ShowMessage($"잘못된 요청입니다.");
+            PopupView.Instance.ShowMessage($"잘못된 요청입니다.");
             Debug.Log($"회원가입 실패! 상태 코드: {code}");
         }
     }
@@ -74,11 +74,4 @@ public class AuthPresenter
     {
         _view.ShowRegisterPanel();
     }
-
-    public void OnCloseMessageClicked()
-    {
-        _view.CloseMessage();
-    }
-
-
 }

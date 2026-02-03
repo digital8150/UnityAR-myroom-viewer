@@ -8,17 +8,16 @@ public class AuthView : MonoBehaviour, IAuthView
     [SerializeField] private GameObject registerPanel;
     [SerializeField] private GameObject loginPanel;
     [SerializeField] private GameObject loadingBlockPanel;
-    [SerializeField] private GameObject popupPanel;
+
 
     [Header("Inputs")]
     [SerializeField] private TMP_InputField regName, regEmail, regPass, regPassConfirm;
     [SerializeField] private TMP_InputField loginEmail, loginPass;
 
     [Header("Buttons")]
-    [SerializeField] private Button regBtn, loginBtn, toLoginBtn, toRegBtn, closeMessage;
+    [SerializeField] private Button regBtn, loginBtn, toLoginBtn, toRegBtn;
 
     [Header("Popup")]
-    [SerializeField] private TMP_Text popupMsg;
 
     public string UserName => regName.text;
     public string Email => loginPanel.activeSelf ? loginEmail.text : regEmail.text;
@@ -35,7 +34,6 @@ public class AuthView : MonoBehaviour, IAuthView
         loginBtn?.onClick.AddListener(_presenter.OnLoginClicked);
         toLoginBtn?.onClick.AddListener(_presenter.OnToLoginClicked);
         toRegBtn?.onClick.AddListener(_presenter.OnToRegisterClicked);
-        closeMessage?.onClick.AddListener(_presenter.OnCloseMessageClicked);
     }
 
     void Start()
@@ -49,23 +47,9 @@ public class AuthView : MonoBehaviour, IAuthView
         loginBtn?.onClick.RemoveListener(_presenter.OnLoginClicked);
         toLoginBtn?.onClick.RemoveListener(_presenter.OnToLoginClicked);
         toRegBtn?.onClick.RemoveListener(_presenter.OnToRegisterClicked);
-        closeMessage?.onClick.RemoveListener(_presenter.OnCloseMessageClicked);
     }
 
     //--- Public Methods ---//
-    public void ShowMessage(string msg)
-    {
-        popupPanel?.SetActive(true);
-        if (popupMsg != null)
-        {
-            popupMsg.text = msg;
-        }
-    }
-
-    public void CloseMessage()
-    {
-        popupPanel?.SetActive(false);
-    }
 
     public void SetLoading(bool isLoading)
     {
