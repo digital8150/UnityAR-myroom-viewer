@@ -13,6 +13,9 @@ public class WebsocketController : MonoBehaviour
 
     public static WebsocketController Instance { get; private set; }
 
+    //--- Events ---//
+    public event Action<string> OnModel3DGenerated;
+
     private ClientWebSocket _webSocket = null;
     private CancellationTokenSource _cts;
     private bool _isDisposed = false;
@@ -137,9 +140,21 @@ public class WebsocketController : MonoBehaviour
         // 여기서 StompHelper.Parse(raw)를 사용하여 body만 추출 가능
         Debug.Log($"[STOMP Received]: {raw}");
 
-        UnityMainThreadDispatcher.Enqueue(() => {
-            // 메인 스레드 로직 (UI 업데이트 등)
-        });
+        // 1. STOMP 프레임 구조상 헤더와 바디 분리 (\n\n 기준)
+        string[] parts = raw.Split(new string[] { "\n\n" }, 2, StringSplitOptions.None);
+        if (parts.Length < 2) return;
+
+        string header = parts[0];
+        string body = parts[1].TrimEnd('\0'); // 끝에 붙은 NULL 문자 제거
+
+        // 2. 메시지 타입 확인
+        if (body.Contains("MODEL_GENERATION_SUCCESS"))
+        {
+            UnityMainThreadDispatcher.Enqueue(() => {
+                OnModel3DGenerated?.Invoke(body);
+                Debug.Log("Websocket : 모델 변환 완료 웹소켓 메세지 수신");
+            });
+        }
     }
 
     private async Task CleanupAsync()

@@ -1617,11 +1617,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 97f68294de3d3ed4b9387d50e983af0e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _page1LandingPage: {fileID: 855389762}
+  _page2Converting: {fileID: 1353050566}
   _returnBtn: {fileID: 1299487453}
   _loadImageBtn: {fileID: 1608787549}
   _takePictureBtn: {fileID: 890417337}
-  _page1LandingPage: {fileID: 855389762}
-  _page2Converting: {fileID: 1353050566}
+  _convertingProgressBar: {fileID: 1866736487}
 --- !u!1 &1534322634
 GameObject:
   m_ObjectHideFlags: 0
@@ -2228,8 +2229,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -75, y: 0}
-  m_SizeDelta: {x: -150, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1866736488
 MonoBehaviour:
