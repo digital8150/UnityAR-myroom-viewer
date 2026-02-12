@@ -15,6 +15,7 @@ public class WebsocketController : MonoBehaviour
 
     //--- Events ---//
     public event Action<string> OnModel3DGenerated;
+    public event Action<string> OnModel3DGenerateFailed;
 
     private ClientWebSocket _webSocket = null;
     private CancellationTokenSource _cts;
@@ -153,6 +154,15 @@ public class WebsocketController : MonoBehaviour
             UnityMainThreadDispatcher.Enqueue(() => {
                 OnModel3DGenerated?.Invoke(body);
                 Debug.Log("Websocket : 모델 변환 완료 웹소켓 메세지 수신");
+            });
+        }
+
+        if (body.Contains("MODEL_GENERATION_FAILED"))
+        {
+            UnityMainThreadDispatcher.Enqueue(() =>
+            {
+                OnModel3DGenerateFailed?.Invoke(body);
+                Debug.Log("Websocket : Model3D Generate Failed");
             });
         }
     }

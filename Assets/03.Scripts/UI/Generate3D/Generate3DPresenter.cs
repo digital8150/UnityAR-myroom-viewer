@@ -54,7 +54,13 @@ public class Generate3DPresenter
 
     public void OnTakePictureClicked()
     {
-
+        NativeCamera.TakePicture((path) => {
+            if(path != null)
+            {
+                _imagePath = path;
+                PopupView.Instance.Presenter.ShowYesNo("선택한 이미지를 3D 모델로 변환하시겠습니까?", OnUserConfirmedGeneration, OnUserDeniedGeneration);
+            }
+        });
     }
 
     //--- Private Methods ---//
@@ -71,6 +77,7 @@ public class Generate3DPresenter
         Debug.Log("사용자가 3D 모델 생성을 확인했습니다.");
         long resultCode;
         WebsocketController.Instance.OnModel3DGenerated += HandleModel3DGenerated;
+        WebsocketController.Instance.OnModel3DGenerateFailed += HandleModel3DGenerateFailed;
         resultCode = await Generate3DService.PostUpload(_imagePath);
         Debug.Log($"3D 모델 생성 요청 결과 코드: {resultCode}");
         _view.UpdateProgressBarSmoothly(0.3f, 5f);
@@ -83,9 +90,21 @@ public class Generate3DPresenter
         _view.UpdateProgressBar(1f);
         _generated3DModel = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelGenerationResponse>(message);
         WebsocketController.Instance.OnModel3DGenerated -= HandleModel3DGenerated;
-        await Task.Delay(500); //완료 표시를 위해 잠시 대기
+        await Task.Delay(250); //완료 표시를 위해 잠시 대기
 
         Debug.Log($"Generate3DPresenter.cs : {message}");
+        //TODO : ReplaceLocalhost 추후 변경 필요
+        _view.UpdateDoneImage(await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(_generated3DModel.thumbnailUrl)));
+        _view.ShowDonePage();
+    }
+
+    private void HandleModel3DGenerateFailed(string message)
+    {
+        _generated3DModel = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelGenerationResponse>(message);
+        WebsocketController.Instance.OnModel3DGenerateFailed -= HandleModel3DGenerateFailed;
+        _view.UpdateFailReason(_generated3DModel.message);
+        _view.ShowFailedPage();
+
     }
 
     private void OnUserDeniedGeneration()
