@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.IO;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -9,11 +11,10 @@ public class WebsocketController : MonoBehaviour
 {
     [Header("웹소켓 설정")]
     [SerializeField]
-    private string _serverUri = "ws://home.codingbot.kr:8080/ws/websocket"; // SockJS를 위해 /websocket 명시
+    private string _serverUri = "ws://home.codingbot.kr:8080/ws/websocket";
 
     public static WebsocketController Instance { get; private set; }
 
-    //--- Events ---//
     public event Action<string> OnModel3DGenerated;
     public event Action<string> OnModel3DGenerateFailed;
 
@@ -21,7 +22,9 @@ public class WebsocketController : MonoBehaviour
     private CancellationTokenSource _cts;
     private bool _isDisposed = false;
     private string _userId = null;
-
+    
+    // 재연결 중복 방지용 플래그
+    private bool _isReconnecting = false; 
 
     private void Awake()
     {
@@ -32,84 +35,133 @@ public class WebsocketController : MonoBehaviour
     private async void OnDestroy() { await CleanupAsync(); }
     private async void OnApplicationQuit() { await CleanupAsync(); }
 
+    // [중요] 모바일 백그라운드 복귀 감지
+    private void OnApplicationPause(bool pauseStatus)
+    {
+        // pauseStatus가 false면 앱이 다시 켜진 것 (Resume)
+        if (!pauseStatus)
+        {
+            Debug.Log("앱이 포그라운드로 복귀했습니다. 연결 상태를 확인합니다.");
+            if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+            {
+                _ = ReconnectAsync();
+            }
+        }
+    }
+
     public async Task ConnectToServer()
     {
+        // 이미 연결 중이거나 연결된 상태면 패스
+        if (_webSocket != null && _webSocket.State == WebSocketState.Open) return;
+
         try
         {
-            var token = JWTToken.Token;
+            _isReconnecting = true; // 연결 시도 시작
+            var token = JWTToken.Token; // 토큰 로직은 형 상황에 맞게 유지
             _userId = Utils.JWTUtils.GetUserId();
-            if (string.IsNullOrEmpty(token)) return;
+            
+            if (string.IsNullOrEmpty(token)) 
+            {
+                Debug.LogWarning("토큰이 없습니다. 연결을 중단합니다.");
+                _isReconnecting = false;
+                return;
+            }
 
-            await CleanupAsync();
+            await CleanupAsync(); // 기존 연결 확실히 정리
 
             _webSocket = new ClientWebSocket();
             _cts = new CancellationTokenSource();
             _isDisposed = false;
 
-            // 1. URL 구성: SockJS 스타일의 타임스탬프와 토큰 결합
             long t = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var fullUri = new Uri($"{_serverUri}?token={Uri.EscapeDataString(token)}&t={t}");
 
-            await _webSocket.ConnectAsync(fullUri, _cts.Token);
+            // 타임아웃 설정 (너무 오래 걸리면 끊고 재시도 하게)
+            var connectTask = _webSocket.ConnectAsync(fullUri, _cts.Token);
+            var timeoutTask = Task.Delay(5000); // 5초 타임아웃
+            
+            if (await Task.WhenAny(connectTask, timeoutTask) == timeoutTask)
+            {
+                throw new TimeoutException("웹소켓 연결 시간 초과");
+            }
+            await connectTask; // 예외가 있으면 여기서 던져짐
+
             Debug.Log("WebSocket Layer Connected!");
 
-            // 2. STOMP CONNECT 프레임 전송 (이게 없으면 서버가 응답 안 함)
             await SendStompConnect();
 
-            // 3. 메세지 채널 구독
             if (!string.IsNullOrEmpty(_userId))
             {
-                await SubscribeAsync($"/topic/model3d/{_userId}"); // 개인 알림
+                await SubscribeAsync($"/topic/model3d/{_userId}");
             }
-            await SubscribeAsync("/topic/model3d/all"); // 전체 알림
-            await SubscribeAsync("/topic/test");        // 테스트 응답
-            await SubscribeAsync("/topic/pong");        // 퐁 응답
+            await SubscribeAsync("/topic/model3d/all");
+            await SubscribeAsync("/topic/test");
+            await SubscribeAsync("/topic/pong");
 
+            _isReconnecting = false; // 연결 성공!
             _ = ReceiveLoop();
         }
         catch (Exception e)
         {
             Debug.LogError($"연결 에러: {e.Message}");
-            await CleanupAsync();
+            _isReconnecting = false;
+            // 연결 실패 시 재연결 시도
+            _ = ReconnectAsync();
         }
+    }
+
+    // [중요] 재연결 전용 로직
+    private async Task ReconnectAsync()
+    {
+        if (_isReconnecting) return; // 이미 재연결 시도 중이면 무시
+        _isReconnecting = true;
+
+        Debug.Log("3초 후 재연결을 시도합니다...");
+        await Task.Delay(3000); // 딜레이를 줘서 서버 부하 방지
+
+        _isReconnecting = false; // ConnectToServer에서 다시 true로 잡겠지만 여기서 풀어줌
+        await ConnectToServer();
     }
 
     public async Task SubscribeAsync(string destination)
     {
         if (_webSocket?.State != WebSocketState.Open) return;
-
-        // 구독 ID는 고유해야 하므로 목적지 이름을 기반으로 생성하거나 GUID 사용
         string subId = "sub-" + destination.GetHashCode();
-
         string stompFrame = $"SUBSCRIBE\nid:{subId}\ndestination:{destination}\nack:auto\n\n\0";
-
         await SendRawMessage(stompFrame);
         Debug.Log($"[STOMP Subscribe]: {destination}");
     }
 
-    // 기존 컴포넌트 호환용 (STOMP SEND 프레임으로 래핑)
     public async Task SendMessageToServer(string message)
     {
-        if (_webSocket?.State != WebSocketState.Open) return;
-
-        // 일반 텍스트를 STOMP SEND 규격으로 변환
-        // destination은 서버 설정에 따라 /app/hello 등으로 수정 필요
+        if (_webSocket?.State != WebSocketState.Open) 
+        {
+            Debug.LogWarning("메시지 전송 실패: 연결이 끊겨있습니다.");
+            return;
+        }
         string stompFrame = $"SEND\ndestination:/app/message\ncontent-type:text/plain\n\n{message}\0";
         await SendRawMessage(stompFrame);
     }
 
     private async Task SendStompConnect()
     {
-        // StompHelper가 있다면 StompHelper.CreateConnectFrame() 사용 가능
-        // 직접 구성 시: CONNECT\naccept-version:1.1,1.2\nheart-beat:10000,10000\n\n\0
-        string connectFrame = "CONNECT\naccept-version:1.1,1.0\nheart-beat:0,0\n\n\0";
+        string connectFrame = "CONNECT\naccept-version:1.1,1.0\nheart-beat:10000,10000\n\n\0"; // 하트비트 설정 추가 추천
         await SendRawMessage(connectFrame);
     }
 
     private async Task SendRawMessage(string rawData)
     {
-        byte[] buffer = Encoding.UTF8.GetBytes(rawData);
-        await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, _cts.Token);
+        try
+        {
+            byte[] buffer = Encoding.UTF8.GetBytes(rawData);
+            await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, _cts.Token);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Send Error: {e.Message}");
+            // 보낼 때 에러나면 연결 끊긴 걸로 간주하고 재연결
+            _ = ReconnectAsync();
+        }
     }
 
     private async Task ReceiveLoop()
@@ -120,49 +172,57 @@ public class WebsocketController : MonoBehaviour
             while (_webSocket.State == WebSocketState.Open)
             {
                 WebSocketReceiveResult result;
-                using var ms = new System.IO.MemoryStream();
+                using var ms = new MemoryStream();
                 do
                 {
+                    // 여기서 연결이 끊기면 예외 발생
                     result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
                     ms.Write(buffer, 0, result.Count);
                 } while (!result.EndOfMessage);
 
-                string rawMessage = Encoding.UTF8.GetString(ms.ToArray());
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    await CleanupAsync();
+                    _ = ReconnectAsync(); // 서버에서 끊었을 때 재연결
+                    break;
+                }
 
-                // STOMP 프레임 분석 (CONNECTED인지, MESSAGE인지 등)
+                string rawMessage = Encoding.UTF8.GetString(ms.ToArray());
                 ProcessStompMessage(rawMessage);
             }
         }
-        catch (Exception e) { if (!_isDisposed) Debug.LogError($"수신 에러: {e.Message}"); }
+        catch (Exception e) 
+        { 
+            if (!_isDisposed) 
+            {
+                Debug.LogError($"수신 루프 에러 (연결 끊김 감지): {e.Message}");
+                // 수신 중 에러 발생 시 재연결 시도
+                _ = ReconnectAsync();
+            }
+        }
     }
 
     private void ProcessStompMessage(string raw)
     {
-        // 여기서 StompHelper.Parse(raw)를 사용하여 body만 추출 가능
-        Debug.Log($"[STOMP Received]: {raw}");
+        // ... (기존 로직 동일)
+        // 로깅이 너무 많으면 성능 저하되니 필요할 때만 켜는 게 좋음
+        // Debug.Log($"[STOMP Received]: {raw}"); 
 
-        // 1. STOMP 프레임 구조상 헤더와 바디 분리 (\n\n 기준)
         string[] parts = raw.Split(new string[] { "\n\n" }, 2, StringSplitOptions.None);
         if (parts.Length < 2) return;
 
-        string header = parts[0];
-        string body = parts[1].TrimEnd('\0'); // 끝에 붙은 NULL 문자 제거
+        string body = parts[1].TrimEnd('\0');
 
-        // 2. 메시지 타입 확인
         if (body.Contains("MODEL_GENERATION_SUCCESS"))
         {
             UnityMainThreadDispatcher.Enqueue(() => {
                 OnModel3DGenerated?.Invoke(body);
-                Debug.Log("Websocket : 모델 변환 완료 웹소켓 메세지 수신");
             });
         }
-
-        if (body.Contains("MODEL_GENERATION_FAILED"))
+        else if (body.Contains("MODEL_GENERATION_FAILED"))
         {
-            UnityMainThreadDispatcher.Enqueue(() =>
-            {
+            UnityMainThreadDispatcher.Enqueue(() => {
                 OnModel3DGenerateFailed?.Invoke(body);
-                Debug.Log("Websocket : Model3D Generate Failed");
             });
         }
     }
@@ -173,9 +233,10 @@ public class WebsocketController : MonoBehaviour
         _isDisposed = true;
         try
         {
-            if (_webSocket.State == WebSocketState.Open)
+            if (_webSocket.State == WebSocketState.Open || _webSocket.State == WebSocketState.CloseReceived)
                 await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
         }
+        catch { /* 닫을 때 나는 에러는 무시 */ }
         finally
         {
             _webSocket?.Dispose();
