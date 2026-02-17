@@ -1,0 +1,115 @@
+﻿using System.Threading.Tasks;
+using UnityEngine;
+
+public class Generate3DPresenter
+{
+    private readonly IGenerate3DView _view;
+    private string _imagePath = null;
+    private ModelGenerationResponse _generated3DModel;
+
+    public Generate3DPresenter(IGenerate3DView view)
+    {
+        _view = view;
+    }
+
+    public void OnReturnClicked()
+    {
+        UnityEngine.SceneManagement.SceneManager.LoadScene("Home");
+    }
+
+    public void OnLoadImageClicked()
+    {
+        if (NativeFilePicker.IsFilePickerBusy())
+        {
+            PopupView.Instance.ShowMessage("파일 선택기가 현재 사용 중입니다. 잠시 후 다시 시도해주세요.");
+            return;
+        }
+
+        try
+        {
+            NativeFilePicker.PickFile((path) =>
+            {
+                if (path == null)
+                {
+                    PopupView.Instance.ShowMessage("사용자가 파일 선택을 취소했습니다.");
+                }
+                else if (!IsValidFileExtensioin(path))
+                {
+                    PopupView.Instance.ShowMessage("유효하지 않은 파일 형식입니다. PNG, JPG, JPEG 파일만 선택해주세요.");
+                }
+                else
+                {
+                    //선택 완료 이후 로직
+                    Debug.Log($"선택된 파일 경로: {path}");
+                    _imagePath = path;
+                    PopupView.Instance.Presenter.ShowYesNo("선택한 이미지를 3D 모델로 변환하시겠습니까?", OnUserConfirmedGeneration, OnUserDeniedGeneration);
+                }
+            });
+        }
+        catch (System.Exception e)
+        {
+            PopupView.Instance.ShowMessage($"파일 선택 중 오류가 발생했습니다: {e.Message}");
+        }
+    }
+
+    public void OnTakePictureClicked()
+    {
+        NativeCamera.TakePicture((path) => {
+            if(path != null)
+            {
+                _imagePath = path;
+                PopupView.Instance.Presenter.ShowYesNo("선택한 이미지를 3D 모델로 변환하시겠습니까?", OnUserConfirmedGeneration, OnUserDeniedGeneration);
+            }
+        });
+    }
+
+    //--- Private Methods ---//
+    private bool IsValidFileExtensioin(string path)
+    {
+        string lowerPath = path.ToLower();
+        return lowerPath.EndsWith(".png") || lowerPath.EndsWith(".jpg") || lowerPath.EndsWith(".jpeg");
+    }
+
+    private async void OnUserConfirmedGeneration()
+    {
+        _view.UpdateProgressBar(0f);
+        _view.ShowConvertingPage();
+        Debug.Log("사용자가 3D 모델 생성을 확인했습니다.");
+        long resultCode;
+        WebsocketController.Instance.OnModel3DGenerated += HandleModel3DGenerated;
+        WebsocketController.Instance.OnModel3DGenerateFailed += HandleModel3DGenerateFailed;
+        resultCode = await Generate3DService.PostUpload(_imagePath);
+        Debug.Log($"3D 모델 생성 요청 결과 코드: {resultCode}");
+        _view.UpdateProgressBarSmoothly(0.3f, 5f);
+        await Task.Delay(5000);
+        _view.UpdateProgressBarSmoothly(0.8f, 30f); //30초 정도 눈속임
+    }
+
+    private async void HandleModel3DGenerated(string message)
+    {
+        _view.UpdateProgressBar(1f);
+        _generated3DModel = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelGenerationResponse>(message);
+        WebsocketController.Instance.OnModel3DGenerated -= HandleModel3DGenerated;
+        await Task.Delay(250); //완료 표시를 위해 잠시 대기
+
+        Debug.Log($"Generate3DPresenter.cs : {message}");
+        //TODO : ReplaceLocalhost 추후 변경 필요
+        _view.UpdateDoneImage(await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(_generated3DModel.thumbnailUrl)));
+        _view.ShowDonePage();
+    }
+
+    private void HandleModel3DGenerateFailed(string message)
+    {
+        _generated3DModel = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelGenerationResponse>(message);
+        WebsocketController.Instance.OnModel3DGenerateFailed -= HandleModel3DGenerateFailed;
+        _view.UpdateFailReason(_generated3DModel.message);
+        _view.ShowFailedPage();
+
+    }
+
+    private void OnUserDeniedGeneration()
+    {
+        Debug.Log("사용자가 3D 모델 생성을 거부했습니다.");
+        _imagePath = null;
+    }
+}
