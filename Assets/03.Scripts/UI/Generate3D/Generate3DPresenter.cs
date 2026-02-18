@@ -90,6 +90,7 @@ public class Generate3DPresenter
         _view.UpdateProgressBar(1f);
         _generated3DModel = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelGenerationResponse>(message);
         WebsocketController.Instance.OnModel3DGenerated -= HandleModel3DGenerated;
+        WebsocketController.Instance.OnModel3DGenerateFailed -= HandleModel3DGenerateFailed;
         await Task.Delay(250); //완료 표시를 위해 잠시 대기
 
         Debug.Log($"Generate3DPresenter.cs : {message}");
@@ -102,6 +103,7 @@ public class Generate3DPresenter
     {
         _generated3DModel = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelGenerationResponse>(message);
         WebsocketController.Instance.OnModel3DGenerateFailed -= HandleModel3DGenerateFailed;
+        WebsocketController.Instance.OnModel3DGenerated -= HandleModel3DGenerated;
         _view.UpdateFailReason(_generated3DModel.message);
         _view.ShowFailedPage();
 

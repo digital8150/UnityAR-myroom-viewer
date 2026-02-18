@@ -15,4 +15,10 @@ public class HomePresenter
         Debug.Log("Navigate to 3D Generation Scene");
         SceneManager.LoadScene("Generate3D");
     }
+
+    public void OnToProjectsClicked()
+    {
+        Debug.Log("Navigate to Projects Scene");
+        SceneManager.LoadScene("Projects");
+    }
 }
