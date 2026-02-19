@@ -41,7 +41,7 @@ public class WebsocketController : MonoBehaviour
         // pauseStatus가 false면 앱이 다시 켜진 것 (Resume)
         if (!pauseStatus)
         {
-            Debug.Log("앱이 포그라운드로 복귀했습니다. 연결 상태를 확인합니다.");
+            Debug.Log($"Recovered from sleep, is websocket open? : {_webSocket.State == WebSocketState.Open}");
             if (_webSocket == null || _webSocket.State != WebSocketState.Open)
             {
                 _ = ReconnectAsync();
@@ -62,7 +62,7 @@ public class WebsocketController : MonoBehaviour
             
             if (string.IsNullOrEmpty(token)) 
             {
-                Debug.LogWarning("토큰이 없습니다. 연결을 중단합니다.");
+                Debug.LogWarning("No JWT Token Found. Aborting");
                 _isReconnecting = false;
                 return;
             }
@@ -82,7 +82,7 @@ public class WebsocketController : MonoBehaviour
             
             if (await Task.WhenAny(connectTask, timeoutTask) == timeoutTask)
             {
-                throw new TimeoutException("웹소켓 연결 시간 초과");
+                throw new TimeoutException("Websocket Timed out");
             }
             await connectTask; // 예외가 있으면 여기서 던져짐
 
@@ -103,7 +103,7 @@ public class WebsocketController : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"연결 에러: {e.Message}");
+            Debug.LogError($"Websocket Connection error: {e.Message}");
             _isReconnecting = false;
             // 연결 실패 시 재연결 시도
             _ = ReconnectAsync();
@@ -136,7 +136,7 @@ public class WebsocketController : MonoBehaviour
     {
         if (_webSocket?.State != WebSocketState.Open) 
         {
-            Debug.LogWarning("메시지 전송 실패: 연결이 끊겨있습니다.");
+            Debug.LogWarning("Message Send Failed : Websocket server closed");
             return;
         }
         string stompFrame = $"SEND\ndestination:/app/message\ncontent-type:text/plain\n\n{message}\0";
@@ -159,7 +159,6 @@ public class WebsocketController : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogError($"Send Error: {e.Message}");
-            // 보낼 때 에러나면 연결 끊긴 걸로 간주하고 재연결
             _ = ReconnectAsync();
         }
     }
@@ -195,7 +194,7 @@ public class WebsocketController : MonoBehaviour
         { 
             if (!_isDisposed) 
             {
-                Debug.LogError($"수신 루프 에러 (연결 끊김 감지): {e.Message}");
+                Debug.LogError($"Receive Roop Error, lost connection detected: {e.Message}");
                 // 수신 중 에러 발생 시 재연결 시도
                 _ = ReconnectAsync();
             }

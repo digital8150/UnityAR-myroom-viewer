@@ -79,25 +79,25 @@ public class Generate3DView : MonoBehaviour, IGenerate3DView
     public void ShowLandingPage()
     {
         HideAllPage();
-        _page1LandingPage.SetActive(true);
+        _page1LandingPage?.SetActive(true);
     }
 
     public void ShowConvertingPage()
     {
         HideAllPage();
-        _page2Converting.SetActive(true);
+        _page2Converting?.SetActive(true);
     }
 
     public void ShowDonePage()
     {
         HideAllPage();
-        _page3Done.SetActive(true);
+        _page3Done?.SetActive(true);
     }
 
     public void ShowFailedPage()
     {
         HideAllPage();
-        _page4Failed.SetActive(true);
+        _page4Failed?.SetActive(true);
     }
 
     public void UpdateDoneImage(Sprite sprite)
@@ -133,6 +133,7 @@ public class Generate3DView : MonoBehaviour, IGenerate3DView
 
     public void UpdateFailReason(string reason)
     {
+        if(_generateFailReasonText == null) return;
         _generateFailReasonText.text = reason;
     }
     //--- Private Methods ---//
@@ -151,7 +152,7 @@ public class Generate3DView : MonoBehaviour, IGenerate3DView
         _returnBtn?.onClick.RemoveAllListeners();
         _loadImageBtn?.onClick.RemoveAllListeners();
         _takePictureBtn?.onClick.RemoveAllListeners();
-        _reTryTakePicktureBtn.onClick.RemoveAllListeners();
+        _reTryTakePicktureBtn?.onClick.RemoveAllListeners();
         _selectAnotherPictureBtn.onClick.RemoveAllListeners();
     }
 
@@ -171,9 +172,9 @@ public class Generate3DView : MonoBehaviour, IGenerate3DView
 
     private void HideAllPage()
     {
-        _page1LandingPage.SetActive(false);
-        _page2Converting.SetActive(false);
-        _page3Done.SetActive(false);
-        _page4Failed.SetActive(false);
+        _page1LandingPage?.SetActive(false);
+        _page2Converting?.SetActive(false);
+        _page3Done?.SetActive(false);
+        _page4Failed?.SetActive(false);
     }
 }

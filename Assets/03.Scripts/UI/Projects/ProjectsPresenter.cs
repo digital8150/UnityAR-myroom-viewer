@@ -19,6 +19,7 @@ public class ProjectsPresenter
     public async void LoadPage()
     {
         if (_isLoading || _isLastPage) return;
+        Debug.Log($"Projects View : Loading Page {_pageIndex}");
 
         _isLoading = true;
 
