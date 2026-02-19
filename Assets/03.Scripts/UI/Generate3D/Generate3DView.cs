@@ -78,24 +78,40 @@ public class Generate3DView : MonoBehaviour, IGenerate3DView
     //--- Public Methods ---//
     public void ShowLandingPage()
     {
+        if(_page1LandingPage == null)
+        {
+            return;
+        }
         HideAllPage();
         _page1LandingPage?.SetActive(true);
     }
 
     public void ShowConvertingPage()
     {
+        if(_page2Converting == null)
+        {
+            return;
+        }
         HideAllPage();
         _page2Converting?.SetActive(true);
     }
 
     public void ShowDonePage()
     {
+        if(_page3Done == null)
+        {
+            return;
+        }
         HideAllPage();
         _page3Done?.SetActive(true);
     }
 
     public void ShowFailedPage()
     {
+        if (_page4Failed == null)
+        {
+            return;
+        }
         HideAllPage();
         _page4Failed?.SetActive(true);
     }
@@ -172,9 +188,9 @@ public class Generate3DView : MonoBehaviour, IGenerate3DView
 
     private void HideAllPage()
     {
-        _page1LandingPage?.SetActive(false);
-        _page2Converting?.SetActive(false);
-        _page3Done?.SetActive(false);
-        _page4Failed?.SetActive(false);
+        if (_page1LandingPage) _page1LandingPage.SetActive(false);
+        if (_page2Converting) _page2Converting.SetActive(false);
+        if (_page3Done) _page3Done.SetActive(false);
+        if (_page4Failed) _page4Failed.SetActive(false);
     }
 }
