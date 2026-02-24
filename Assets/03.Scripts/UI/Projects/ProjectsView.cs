@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 public interface IProjectsView
 {
-    void AddNewViewSlot(Sprite imageSprite, string name);
+    void AddNewViewSlot(Sprite imageSprite, string name, int modelId, string status);
 }
 
 public class ProjectsView : MonoBehaviour, IProjectsView
@@ -59,12 +59,25 @@ public class ProjectsView : MonoBehaviour, IProjectsView
         }
     }
 
-    public void AddNewViewSlot(Sprite imageSprite, string name)
+    public void AddNewViewSlot(Sprite imageSprite, string name, int modelId, string status)
     {
         var viewSlot = Instantiate(_viewSlotPrefab, _gridParent.transform);
+        viewSlot.ModelId = modelId;
         viewSlot.UpdateProjectNameText(name);
         viewSlot.UpdateThumbnailImage(imageSprite);
+        viewSlot.UpdateStatusText(status);
         _slotsViewList.Add(viewSlot);
+    }
+
+    public void UpdateViewSlotStatusWithID(int id, string status)
+    {
+        var find = _slotsViewList.Find(item => item.ModelId == id);
+        if(!find)
+        {
+            find.UpdateStatusText(status);
+            return;
+        }
+        Debug.LogError($"[ProjectsView.cs] Cannot find view slot with id : {id}", this);
     }
 
     private void OnScrollChanged(Vector2 pos)

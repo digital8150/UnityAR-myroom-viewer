@@ -11,6 +11,8 @@ public class ViewSlotsView : MonoBehaviour
     [SerializeField] private Button _button;
     [SerializeField] private TextMeshProUGUI _statusText;
 
+    public int ModelId { get; set; }
+
     public void UpdateThumbnailImage(Sprite sprite)
     {
         if(_thumbnailImage) _thumbnailImage.sprite = sprite;

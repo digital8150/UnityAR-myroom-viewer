@@ -36,7 +36,11 @@ public class ProjectsPresenter
                 ModelSearchResponse data = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelSearchResponse>(jsonBody);
                 foreach (var item in data.content)
                 {
-                    _view.AddNewViewSlot(await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(item.thumbnailUrl)), item.name);
+                    _view.AddNewViewSlot(
+                        await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(item.thumbnailUrl)),
+                        item.name,
+                        item.id,
+                        TranslateStatus(item.status));
                 }
 
                 _isLastPage = data.last;
@@ -54,5 +58,21 @@ public class ProjectsPresenter
     public void ToGenerate3DClicked()
     {
         SceneManager.LoadScene("Generate3D");
+    }
+
+    private string TranslateStatus(string status)
+    {
+        switch (status)
+        {
+            case "SUCCESS":
+                return "";
+            case "PROCESSING":
+                return "처리중";
+            case "FAILED":
+                return "실패";
+            default:
+                Debug.LogError($"[ProjectsPresenter.cs] Unknown Status String : {status}");
+                return "";
+        }
     }
 }
