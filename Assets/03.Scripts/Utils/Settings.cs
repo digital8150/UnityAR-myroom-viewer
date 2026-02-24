@@ -4,12 +4,14 @@ namespace Utils
 {
     public static class Settings
     {
-        public static readonly string BaseUrl = "http://home.codingbot.kr:8080";
+        private static string hostname = "home.codingbot.kr";
+
+        public static string BaseUrl => $"http://{hostname}:8080";
 
         public static string ReplaceLocalhost(string url)
         {
             if (string.IsNullOrEmpty(url)) return url;
-            return url.Replace("localhost", "home.codingbot.kr");
+            return url.Replace("localhost", hostname);
         }
     }
 }
