@@ -9,15 +9,21 @@ public class ViewSlotsView : MonoBehaviour
     [SerializeField] private ProceduralImage _thumbnailImage;
     [SerializeField] private TextMeshProUGUI _projectNameText;
     [SerializeField] private Button _button;
+    [SerializeField] private TextMeshProUGUI _statusText;
 
     public void UpdateThumbnailImage(Sprite sprite)
     {
-        _thumbnailImage.sprite = sprite;
+        if(_thumbnailImage) _thumbnailImage.sprite = sprite;
     }
 
     public void UpdateProjectNameText(string content)
     {
-        _projectNameText.text = content;
+        if(_projectNameText) _projectNameText.text = content;
+    }
+
+    public void UpdateStatusText(string content)
+    {
+        if(_statusText) _statusText.text = content;
     }
 
     public Button GetButton() => _button;
