@@ -57,6 +57,10 @@ public class ProjectsView : MonoBehaviour, IProjectsView
         {
             viewSlot?.GetButton()?.onClick.RemoveAllListeners();
         }
+        if (_presenter != null)
+        {
+            _presenter.Dispose();
+        }
     }
 
     /// <summary>

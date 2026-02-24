@@ -79,7 +79,7 @@ public class Generate3DPresenter
         long resultCode;
         (resultCode, GenerateProcessingModelID) = await Generate3DService.PostUpload(_imagePath);
         Debug.Log($"Upload request response code : {resultCode}");
-        if(GenerateProcessingModelID == -1)
+        if(resultCode != 200)
         {
             PopupView.Instance.ShowMessage("이미지 업로드 중 오류가 발생했습니다");
             Debug.LogError($"[Generate3DPresenter.cs] Something went wrong while uploading image!! responseCode : {resultCode} response modelId : {GenerateProcessingModelID}");

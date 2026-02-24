@@ -1,8 +1,9 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class ProjectsPresenter
+public class ProjectsPresenter : IDisposable
 {
     private const int VIEW_PER_PAGE = 11;
     private IProjectsView _view;
@@ -10,10 +11,19 @@ public class ProjectsPresenter
 
     private bool _isLastPage = false;
     private bool _isLoading = false;
+    private string _sortBy = "id";
 
     public ProjectsPresenter(IProjectsView view)
     {
         _view = view;
+        WebsocketController.Instance.OnModel3DGenerated += HandleModelGenerated;
+        WebsocketController.Instance.OnModel3DGenerateFailed += HandleModelGenerated;
+    }
+
+    public void Dispose()
+    {
+        WebsocketController.Instance.OnModel3DGenerated -= HandleModelGenerated;
+        WebsocketController.Instance.OnModel3DGenerateFailed -= HandleModelGenerated;
     }
 
     public async void StartUp()
@@ -61,7 +71,7 @@ public class ProjectsPresenter
         string jsonBody;
 
         (responseCode, jsonBody) = await ProjectsService.GetMemberSearch(
-            Int32.Parse(Utils.JWTUtils.GetUserId()), _pageIndex, VIEW_PER_PAGE);
+            Int32.Parse(Utils.JWTUtils.GetUserId()), _pageIndex, VIEW_PER_PAGE, sort:_sortBy);
 
         if (responseCode == 200 && !string.IsNullOrEmpty(jsonBody))
         {
@@ -107,6 +117,19 @@ public class ProjectsPresenter
             default:
                 Debug.LogError($"[ProjectsPresenter.cs] Unknown Status String : {status}");
                 return "";
+        }
+    }
+
+    private void HandleModelGenerated(string websocketResponse)
+    {
+        try
+        {
+            ModelGenerationResponse modelGenerationResponse = JsonConvert.DeserializeObject<ModelGenerationResponse>(websocketResponse);
+            //TODO : 모델 생성 완료 (성공/실패) 시 가장 최상단에 모델 업데이트 하기 (현재는 모델 아이디를 알 수 없음...)
+        }
+        catch
+        {
+
         }
     }
 }
