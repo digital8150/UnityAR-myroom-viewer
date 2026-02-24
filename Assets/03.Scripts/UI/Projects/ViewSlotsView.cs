@@ -13,6 +13,11 @@ public class ViewSlotsView : MonoBehaviour
 
     public int ModelId { get; set; }
 
+    private void OnDestroy()
+    {
+        if(!_button) _button.onClick.RemoveAllListeners();
+    }
+
     public void UpdateThumbnailImage(Sprite sprite)
     {
         if(_thumbnailImage) _thumbnailImage.sprite = sprite;

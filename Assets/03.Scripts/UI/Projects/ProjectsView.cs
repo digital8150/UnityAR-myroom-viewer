@@ -1,14 +1,11 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
-public interface IProjectsView
-{
-    void UpdateOrAddViewItem(Sprite imageSprite, string name, int modelId, string status);
-}
-
-public class ProjectsView : MonoBehaviour, IProjectsView
+public class ProjectsView : MonoBehaviour
 {
     [Header("Prefabs")]
     [SerializeField]
@@ -70,7 +67,7 @@ public class ProjectsView : MonoBehaviour, IProjectsView
     /// <param name="name">프로젝트 이름</param>
     /// <param name="modelId">데이터 고유 식별자 (조회 기준)</param>
     /// <param name="status">현재 진행 상태 텍스트</param>
-    public void UpdateOrAddViewItem(Sprite imageSprite, string name, int modelId, string status)
+    public void UpdateOrAddViewItem(Sprite imageSprite, string name, int modelId, string status, UnityAction buttonHandler)
     {
         var find = _slotsViewList.Find(item => item.ModelId == modelId);
 
@@ -81,6 +78,7 @@ public class ProjectsView : MonoBehaviour, IProjectsView
             viewSlot.UpdateProjectNameText(name);
             viewSlot.UpdateThumbnailImage(imageSprite);
             viewSlot.UpdateStatusText(status);
+            viewSlot.GetButton()?.onClick.AddListener(buttonHandler);
             _slotsViewList.Add(viewSlot);
             return;
         }

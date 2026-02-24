@@ -6,14 +6,14 @@ using UnityEngine.SceneManagement;
 public class ProjectsPresenter : IDisposable
 {
     private const int VIEW_PER_PAGE = 11;
-    private IProjectsView _view;
+    private ProjectsView _view;
     private int _pageIndex = 0;
 
     private bool _isLastPage = false;
     private bool _isLoading = false;
     private string _sortBy = "id";
 
-    public ProjectsPresenter(IProjectsView view)
+    public ProjectsPresenter(ProjectsView view)
     {
         _view = view;
         WebsocketController.Instance.OnModel3DGenerated += HandleModelGenerated;
@@ -47,7 +47,8 @@ public class ProjectsPresenter : IDisposable
                     await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(data.thumbnailUrl)),
                     data.name,
                     data.id,
-                    TranslateStatus(data.status));
+                    TranslateStatus(data.status),
+                    () => OnButtonClicked(data.id));
             }
         }
         catch (Exception ex)
@@ -84,7 +85,8 @@ public class ProjectsPresenter : IDisposable
                         await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(item.thumbnailUrl)),
                         item.name,
                         item.id,
-                        TranslateStatus(item.status));
+                        TranslateStatus(item.status),
+                        () => OnButtonClicked(item.id));
                 }
 
                 _isLastPage = data.last;
@@ -131,5 +133,10 @@ public class ProjectsPresenter : IDisposable
         {
 
         }
+    }
+
+    private void OnButtonClicked(int modelId)
+    {
+        Debug.Log($"ViewSlot Button Clicked ID : {modelId}");
     }
 }

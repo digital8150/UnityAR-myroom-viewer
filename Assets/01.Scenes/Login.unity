@@ -2736,7 +2736,7 @@ MonoBehaviour:
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
   m_Interactable: 1
-  m_TargetGraphic: {fileID: 948889659}
+  m_TargetGraphic: {fileID: 0}
   m_TextViewport: {fileID: 1784146735}
   m_TextComponent: {fileID: 1615234633}
   m_Placeholder: {fileID: 1146479913}
@@ -3645,7 +3645,7 @@ MonoBehaviour:
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
   m_Interactable: 1
-  m_TargetGraphic: {fileID: 1283709668}
+  m_TargetGraphic: {fileID: 0}
   m_TextViewport: {fileID: 1467959207}
   m_TextComponent: {fileID: 279750280}
   m_Placeholder: {fileID: 382183528}
@@ -3833,7 +3833,7 @@ MonoBehaviour:
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
   m_Interactable: 1
-  m_TargetGraphic: {fileID: 1295865126}
+  m_TargetGraphic: {fileID: 0}
   m_TextViewport: {fileID: 462094992}
   m_TextComponent: {fileID: 1394165468}
   m_Placeholder: {fileID: 113428751}
@@ -4674,7 +4674,7 @@ MonoBehaviour:
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
   m_Interactable: 1
-  m_TargetGraphic: {fileID: 1449873178}
+  m_TargetGraphic: {fileID: 0}
   m_TextViewport: {fileID: 92021896}
   m_TextComponent: {fileID: 1739376534}
   m_Placeholder: {fileID: 1245970099}
@@ -6557,7 +6557,7 @@ MonoBehaviour:
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
   m_Interactable: 1
-  m_TargetGraphic: {fileID: 2119112201}
+  m_TargetGraphic: {fileID: 0}
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
@@ -6577,14 +6577,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 725376243346385095, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 3071211083965630150, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 3760789708149126372, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -6668,14 +6660,6 @@ PrefabInstance:
     - target: {fileID: 4191839608918093926, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
       propertyPath: m_Name
       value: PopupCanvas
-      objectReference: {fileID: 0}
-    - target: {fileID: 5325877697036013604, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: m_SizeDelta.y
-      value: 200
-      objectReference: {fileID: 0}
-    - target: {fileID: 6272146344694719522, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: m_IsActive
-      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
