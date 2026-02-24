@@ -4,37 +4,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.UI.ProceduralImage;
 
-public interface IGenerate3DView
-{
-    void ShowLandingPage();
-    void ShowConvertingPage();
-    void ShowDonePage();
-    void ShowFailedPage();
-
-    /// <summary>
-    /// 진행도 바 업데이트
-    /// </summary>
-    /// <param name="progress">0.0~1.0의 값</param>
-    void UpdateProgressBar(float progress);
-
-    /// <summary>
-    /// 진행도바를 부드럽게 업데이트
-    /// </summary>
-    /// <param name="targetProgress"> 목표 진행도 </param>
-    /// <param name="duration"> 지속시간 </param>
-    void UpdateProgressBarSmoothly(float targetProgress, float duration);
-
-    void UpdateDoneImage(Sprite sprite);
-
-    void UpdateFailReason(string reason);
-}
-
-public class Generate3DView : MonoBehaviour, IGenerate3DView
+public class Generate3DView : MonoBehaviour
 {
     //--- Settings ---//
     [Header("Pages")]
     [SerializeField] private GameObject _page1LandingPage;
-    [SerializeField] private GameObject _page2Converting;
     [SerializeField] private GameObject _page3Done;
     [SerializeField] private GameObject _page4Failed;
 
@@ -44,9 +18,6 @@ public class Generate3DView : MonoBehaviour, IGenerate3DView
     [Header("Page 1 : Landing Page")]
     [SerializeField] private Button _loadImageBtn;
     [SerializeField] private Button _takePictureBtn;
-
-    [Header("Page 2 : Converting Page")]
-    [SerializeField] private RectTransform _convertingProgressBar;
 
     [Header("Page 3 : Done Page")]
     [SerializeField] private ProceduralImage _doneImage;
@@ -86,15 +57,6 @@ public class Generate3DView : MonoBehaviour, IGenerate3DView
         _page1LandingPage?.SetActive(true);
     }
 
-    public void ShowConvertingPage()
-    {
-        if(_page2Converting == null)
-        {
-            return;
-        }
-        HideAllPage();
-        _page2Converting?.SetActive(true);
-    }
 
     public void ShowDonePage()
     {
@@ -122,29 +84,6 @@ public class Generate3DView : MonoBehaviour, IGenerate3DView
         {
             _doneImage.sprite = sprite;
         }
-    }
-
-    public void UpdateProgressBar(float progress)
-    {
-        if (_convertingProgressBar == null) return;
-
-        progress = Mathf.Clamp01(progress);
-
-        // 공식 수정: (progress - 1) * 354
-        // progress가 0이면 -354 (인스펙터 Right: 354)
-        // progress가 1이면 0 (인스펙터 Right: 0)
-        float rightOffset = (progress - 1) * 354f;
-        _convertingProgressBar.offsetMax = new Vector2(rightOffset, _convertingProgressBar.offsetMax.y);
-    }
-
-    public void UpdateProgressBarSmoothly(float targetProgress, float duration)
-    {
-        if (_convertingProgressBar == null) return;
-
-        targetProgress = Mathf.Clamp01(targetProgress);
-        float targetRightOffset = (targetProgress - 1) * 354f;
-
-        StartCoroutine(LerpRectTransformRightOffset(_convertingProgressBar, targetRightOffset, duration));
     }
 
     public void UpdateFailReason(string reason)
@@ -189,7 +128,6 @@ public class Generate3DView : MonoBehaviour, IGenerate3DView
     private void HideAllPage()
     {
         if (_page1LandingPage) _page1LandingPage.SetActive(false);
-        if (_page2Converting) _page2Converting.SetActive(false);
         if (_page3Done) _page3Done.SetActive(false);
         if (_page4Failed) _page4Failed.SetActive(false);
     }

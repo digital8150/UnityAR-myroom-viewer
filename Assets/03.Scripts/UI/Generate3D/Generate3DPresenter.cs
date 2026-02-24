@@ -3,11 +3,13 @@ using UnityEngine;
 
 public class Generate3DPresenter
 {
-    private readonly IGenerate3DView _view;
+    private readonly Generate3DView _view;
     private string _imagePath = null;
     private ModelGenerationResponse _generated3DModel;
 
-    public Generate3DPresenter(IGenerate3DView view)
+    public static int GenerateProcessingModelID = -1;
+
+    public Generate3DPresenter(Generate3DView view)
     {
         _view = view;
     }
@@ -72,22 +74,17 @@ public class Generate3DPresenter
 
     private async void OnUserConfirmedGeneration()
     {
-        _view.UpdateProgressBar(0f);
-        _view.ShowConvertingPage();
         Debug.Log("사용자가 3D 모델 생성을 확인했습니다.");
         long resultCode;
         WebsocketController.Instance.OnModel3DGenerated += HandleModel3DGenerated;
         WebsocketController.Instance.OnModel3DGenerateFailed += HandleModel3DGenerateFailed;
         resultCode = await Generate3DService.PostUpload(_imagePath);
         Debug.Log($"3D 모델 생성 요청 결과 코드: {resultCode}");
-        _view.UpdateProgressBarSmoothly(0.3f, 5f);
         await Task.Delay(5000);
-        _view.UpdateProgressBarSmoothly(0.8f, 30f); //30초 정도 눈속임
     }
 
     private async void HandleModel3DGenerated(string message)
     {
-        _view.UpdateProgressBar(1f);
         _generated3DModel = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelGenerationResponse>(message);
         WebsocketController.Instance.OnModel3DGenerated -= HandleModel3DGenerated;
         WebsocketController.Instance.OnModel3DGenerateFailed -= HandleModel3DGenerateFailed;

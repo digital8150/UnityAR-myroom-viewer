@@ -16,6 +16,40 @@ public class ProjectsPresenter
         _view = view;
     }
 
+    public async void StartUp()
+    {
+        if(Generate3DPresenter.GenerateProcessingModelID == -1)
+        {
+            LoadPage();
+            return;
+        }
+
+        long responseCode;
+        string jsonBody;
+        (responseCode, jsonBody) = await ProjectsService.GetSingleModel3D(Generate3DPresenter.GenerateProcessingModelID);
+
+        try
+        {
+            if (responseCode == 200 && !string.IsNullOrEmpty(jsonBody))
+            {
+                ModelData data = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelData>(jsonBody);
+                _view.UpdateOrAddViewItem(
+                    await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(data.thumbnailUrl)),
+                    data.name,
+                    data.id,
+                    TranslateStatus(data.status));
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+        }
+        finally
+        {
+            LoadPage();
+        }
+    }
+
     public async void LoadPage()
     {
         if (_isLoading || _isLastPage) return;
@@ -36,7 +70,7 @@ public class ProjectsPresenter
                 ModelSearchResponse data = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelSearchResponse>(jsonBody);
                 foreach (var item in data.content)
                 {
-                    _view.AddNewViewSlot(
+                    _view.UpdateOrAddViewItem(
                         await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(item.thumbnailUrl)),
                         item.name,
                         item.id,

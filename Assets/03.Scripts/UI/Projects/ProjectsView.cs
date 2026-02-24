@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 public interface IProjectsView
 {
-    void AddNewViewSlot(Sprite imageSprite, string name, int modelId, string status);
+    void UpdateOrAddViewItem(Sprite imageSprite, string name, int modelId, string status);
 }
 
 public class ProjectsView : MonoBehaviour, IProjectsView
@@ -37,7 +37,7 @@ public class ProjectsView : MonoBehaviour, IProjectsView
     private void Start()
     {
         _toGenerate3DButton?.onClick.AddListener(_presenter.ToGenerate3DClicked);
-        _presenter.LoadPage();
+        _presenter.StartUp();
     }
 
     private void OnEnable()
@@ -59,25 +59,43 @@ public class ProjectsView : MonoBehaviour, IProjectsView
         }
     }
 
-    public void AddNewViewSlot(Sprite imageSprite, string name, int modelId, string status)
+    /// <summary>
+    /// ModelId를 기준으로 기존 뷰를 갱신하거나, 없으면 새로 생성하여 리스트에 추가합니다.
+    /// </summary>
+    /// <param name="imageSprite">표시할 썸네일 이미지</param>
+    /// <param name="name">프로젝트 이름</param>
+    /// <param name="modelId">데이터 고유 식별자 (조회 기준)</param>
+    /// <param name="status">현재 진행 상태 텍스트</param>
+    public void UpdateOrAddViewItem(Sprite imageSprite, string name, int modelId, string status)
     {
-        var viewSlot = Instantiate(_viewSlotPrefab, _gridParent.transform);
-        viewSlot.ModelId = modelId;
-        viewSlot.UpdateProjectNameText(name);
-        viewSlot.UpdateThumbnailImage(imageSprite);
-        viewSlot.UpdateStatusText(status);
-        _slotsViewList.Add(viewSlot);
+        var find = _slotsViewList.Find(item => item.ModelId == modelId);
+
+        if(!find)
+        {
+            var viewSlot = Instantiate(_viewSlotPrefab, _gridParent.transform);
+            viewSlot.ModelId = modelId;
+            viewSlot.UpdateProjectNameText(name);
+            viewSlot.UpdateThumbnailImage(imageSprite);
+            viewSlot.UpdateStatusText(status);
+            _slotsViewList.Add(viewSlot);
+            return;
+        }
+
+        find.UpdateProjectNameText(name);
+        find.UpdateThumbnailImage(imageSprite);
+        find.UpdateStatusText(status);
     }
 
-    public void UpdateViewSlotStatusWithID(int id, string status)
+    public bool UpdateViewSlotStatusWithID(int id, string status)
     {
         var find = _slotsViewList.Find(item => item.ModelId == id);
         if(!find)
         {
             find.UpdateStatusText(status);
-            return;
+            return true;
         }
         Debug.LogError($"[ProjectsView.cs] Cannot find view slot with id : {id}", this);
+        return false;
     }
 
     private void OnScrollChanged(Vector2 pos)

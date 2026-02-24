@@ -69,4 +69,30 @@ public class ProjectsService
             return (responseCode, body);
         }
     }
+
+    public static async Task<(long, string)> GetSingleModel3D(int modelId)
+    {
+        long responseCode = 0;
+
+        using (var request = UnityWebRequest.Get($"{Utils.Settings.BaseUrl}/api/model3ds/{modelId}"))
+        {
+            request.SetRequestHeader("Authorization", $"Bearer {JWTToken.Token}");
+            request.SetRequestHeader("accept", "application/json");
+
+            var operation = request.SendWebRequest();
+
+            while(!operation.isDone) await Task.Yield();
+
+            responseCode = request.responseCode;
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"Request Failed: {request.error} | Details: {request.downloadHandler.text}");
+                return (responseCode, string.Empty);
+            }
+
+
+            string body = request.downloadHandler.text;
+            return (responseCode, body);
+        }
+    }
 }
