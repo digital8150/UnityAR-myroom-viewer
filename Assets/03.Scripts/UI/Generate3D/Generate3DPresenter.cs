@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Generate3DPresenter
 {
@@ -33,7 +34,7 @@ public class Generate3DPresenter
             {
                 if (path == null)
                 {
-                    PopupView.Instance.ShowMessage("사용자가 파일 선택을 취소했습니다.");
+                   
                 }
                 else if (!IsValidFileExtensioin(path))
                 {
@@ -74,36 +75,17 @@ public class Generate3DPresenter
 
     private async void OnUserConfirmedGeneration()
     {
-        Debug.Log("사용자가 3D 모델 생성을 확인했습니다.");
+        Debug.Log("User confirmed model generation");
         long resultCode;
-        WebsocketController.Instance.OnModel3DGenerated += HandleModel3DGenerated;
-        WebsocketController.Instance.OnModel3DGenerateFailed += HandleModel3DGenerateFailed;
-        resultCode = await Generate3DService.PostUpload(_imagePath);
-        Debug.Log($"3D 모델 생성 요청 결과 코드: {resultCode}");
-        await Task.Delay(5000);
-    }
-
-    private async void HandleModel3DGenerated(string message)
-    {
-        _generated3DModel = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelGenerationResponse>(message);
-        WebsocketController.Instance.OnModel3DGenerated -= HandleModel3DGenerated;
-        WebsocketController.Instance.OnModel3DGenerateFailed -= HandleModel3DGenerateFailed;
-        await Task.Delay(250); //완료 표시를 위해 잠시 대기
-
-        Debug.Log($"Generate3DPresenter.cs : {message}");
-        //TODO : ReplaceLocalhost 추후 변경 필요
-        _view.UpdateDoneImage(await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(_generated3DModel.thumbnailUrl)));
-        _view.ShowDonePage();
-    }
-
-    private void HandleModel3DGenerateFailed(string message)
-    {
-        _generated3DModel = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelGenerationResponse>(message);
-        WebsocketController.Instance.OnModel3DGenerateFailed -= HandleModel3DGenerateFailed;
-        WebsocketController.Instance.OnModel3DGenerated -= HandleModel3DGenerated;
-        _view.UpdateFailReason(_generated3DModel.message);
-        _view.ShowFailedPage();
-
+        (resultCode, GenerateProcessingModelID) = await Generate3DService.PostUpload(_imagePath);
+        Debug.Log($"Upload request response code : {resultCode}");
+        if(GenerateProcessingModelID == -1)
+        {
+            PopupView.Instance.ShowMessage("이미지 업로드 중 오류가 발생했습니다");
+            Debug.LogError($"[Generate3DPresenter.cs] Something went wrong while uploading image!! responseCode : {resultCode} response modelId : {GenerateProcessingModelID}");
+            return;
+        }
+        SceneManager.LoadScene("Projects");
     }
 
     private void OnUserDeniedGeneration()
