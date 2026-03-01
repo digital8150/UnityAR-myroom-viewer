@@ -1,0 +1,149 @@
+﻿using System;
+using UnityEngine;
+
+public class CommunityPresenter
+{
+    private const int VIEW_PER_PAGE = 11;
+    private CommunityView _view;
+    private int _pageIndex = 0;
+
+    private bool _isLastPage = false;
+    private bool _isLoading = false;
+    private string _sortBy = "";
+
+    public CommunityPresenter(CommunityView view)
+    {
+        _view = view;
+    }
+
+    public void OnScrollChanged(Vector2 pos)
+    {
+        if (pos.y <= 0.1f)
+        {
+            LoadPage();
+        }
+    }
+
+    public async void LoadPage()
+    {
+        if (_isLoading || _isLastPage) return;
+        Debug.Log($"Projects View : Loading Page {_pageIndex}");
+
+        _isLoading = true;
+
+        long responseCode;
+        string jsonBody;
+
+        (responseCode, jsonBody) = await CommunityService.GetPostsPublic(_pageIndex, VIEW_PER_PAGE, _sortBy);
+
+        if (responseCode == 200 && !string.IsNullOrEmpty(jsonBody))
+        {
+            try
+            {
+                PostResponse postResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<PostResponse>(jsonBody);
+                foreach (var item in postResponse.content)
+                {
+                    if(item.imageUrl == null)
+                    {
+                        var postView = _view.CreateNoImagePostView();
+                        postView.SetBadgeText(TranslateCategory(item.category));
+                        postView.SetTitleText(item.title);
+                        postView.SetContentText(item.content);
+                        postView.SetInfoText(TranslateInfo(item));
+                        postView.GetButton().onClick.AddListener(() => OpenDetail(item.id));
+                    }
+                    else
+                    {
+                        var postView = _view.CreateWithImagePostView();
+                        postView.SetBadgeText(TranslateCategory(item.category));
+                        postView.SetTitleText(item.title);
+                        postView.SetContentText(item.content);
+                        postView.SetInfoText(TranslateInfo(item));
+                        postView.SetThumbnail(item.imageUrl);
+                        postView.GetButton().onClick.AddListener(() => OpenDetail(item.id));
+                    }
+                }
+
+                _isLastPage = postResponse.last;
+                _pageIndex++;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+        }
+
+        _isLoading = false;
+    }
+
+    private string TranslateCategory(string category)
+    {
+        switch (category)
+        {
+            case "QUESTION":
+                return "질문";
+            case "REVIEW":
+                return "리뷰";
+            case "FURNITURE":
+                return "가구";
+            case "INTERIOR":
+                return "인테리어";
+            case "ETC":
+                return "기타";
+            default:
+                Debug.LogWarning($"알 수 없는 카테고리: {category}");
+                return category; // 알 수 없는 카테고리는 그대로 반환
+        }
+    }
+
+    private string TranslateInfo(PostContent content)
+    {
+        //NOTE : 댓글 수 서버에서 응답 필요
+        return $"{content.memberName}•{GetRelativeTime(content.createdAt)}•조회 {content.viewCount}•댓글 0•좋아요 {content.likeCount}";
+    }
+
+    private string GetRelativeTime(string isoDateTime)
+    {
+        if (string.IsNullOrEmpty(isoDateTime)) return "시간 정보 없음";
+
+        // 1. ISO 8601 문자열을 DateTime 객체로 변환
+        if (!DateTime.TryParse(isoDateTime, out DateTime dateTime))
+        {
+            return "알 수 없음";
+        }
+
+        // 2. 현재 시간과의 차이 계산
+        TimeSpan timeSpan = DateTime.Now - dateTime;
+
+        // 3. 차이에 따른 문자열 반환 (조건문 순서가 중요합니다)
+        if (timeSpan.TotalSeconds < 60)
+        {
+            return "방금 전";
+        }
+        if (timeSpan.TotalMinutes < 60)
+        {
+            return $"{(int)timeSpan.TotalMinutes}분 전";
+        }
+        if (timeSpan.TotalHours < 24)
+        {
+            return $"{(int)timeSpan.TotalHours}시간 전";
+        }
+        if (timeSpan.TotalDays < 7)
+        {
+            return $"{(int)timeSpan.TotalDays}일 전";
+        }
+        if (timeSpan.TotalDays < 31)
+        {
+            return $"{(int)Math.Ceiling(timeSpan.TotalDays / 7)}주 전";
+        }
+
+        // 한 달이 넘어가면 날짜 그대로 표시 (예: 2026-03-01)
+        return dateTime.ToString("yyyy-MM-dd");
+    }
+
+    private void OpenDetail(int postId)
+    {
+        //TODO : 포스트 상세 페이지로 이동
+        Debug.Log($"포스트 상세 페이지로 이동: {postId}");
+    }
+}

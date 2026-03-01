@@ -1,13 +1,15 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class NoImagePostView : MonoBehaviour
 {
     [Header("Components")]
-    [SerializeField] private TextMeshProUGUI _badgeText;
-    [SerializeField] private TextMeshProUGUI _titleText;
-    [SerializeField] private TextMeshProUGUI _contentText;
-    [SerializeField] private TextMeshProUGUI _infoText;
+    [SerializeField] protected TextMeshProUGUI _badgeText;
+    [SerializeField] protected TextMeshProUGUI _titleText;
+    [SerializeField] protected TextMeshProUGUI _contentText;
+    [SerializeField] protected TextMeshProUGUI _infoText;
+    [SerializeField] protected Button _button;
 
     public void SetBadgeText(string text)
     {
@@ -36,5 +38,10 @@ public class NoImagePostView : MonoBehaviour
         {
             _infoText.text = text;
         }
+    }
+
+    public Button GetButton()
+    {
+        return _button;
     }
 }

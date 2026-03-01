@@ -1,47 +1,12 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI.ProceduralImage;
+using UnityEngine.UI;
 
-public class WithImagePostView : MonoBehaviour
+public class WithImagePostView : NoImagePostView
 {
     [Header("Components")]
-    [SerializeField] private TextMeshProUGUI _badgeText;
-    [SerializeField] private TextMeshProUGUI _titleText;
-    [SerializeField] private TextMeshProUGUI _contentText;
-    [SerializeField] private TextMeshProUGUI _infoText;
     [SerializeField] private ProceduralImage _thumbnailImage;
-
-    public void SetBadgeText(string text)
-    {
-        if (_badgeText != null)
-        {
-            _badgeText.text = text;
-        }
-    }
-
-    public void SetTitleText(string text)
-    {
-        if (_titleText != null)
-        {
-            _titleText.text = text;
-        }
-    }
-
-    public void SetContentText(string text)
-    {
-        if (_contentText != null)
-        {
-            _contentText.text = text;
-        }
-    }
-
-    public void SetInfoText(string text)
-    {
-        if (_infoText != null)
-        {
-            _infoText.text = text;
-        }
-    }
 
     public void SetThumbnail(Sprite sprite)
     {

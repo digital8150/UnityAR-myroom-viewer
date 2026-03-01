@@ -23,4 +23,11 @@ public class HomePresenter
         Utils.SceneHistory.MarkCurrentScene();
         SceneManager.LoadScene("Projects");
     }
+
+    public void OnToCommunityClicked()
+    {
+        Debug.Log("Navigate to Community Scene");
+        Utils.SceneHistory.MarkCurrentScene();
+        SceneManager.LoadScene("Community");
+    }
 }

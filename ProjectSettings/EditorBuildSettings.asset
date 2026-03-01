@@ -20,6 +20,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/01.Scenes/ProjectInspect.unity
     guid: 0acb7c1da54386648a6ad2e3678b16a5
+  - enabled: 1
+    path: Assets/01.Scenes/Community.unity
+    guid: 0b49cd241316cde45a0d0eba11a76867
   m_configObjects:
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: 24f29a8151320b147a009ff5491f7a22, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 289c1b55c9541489481df5cc06664110, type: 3}
