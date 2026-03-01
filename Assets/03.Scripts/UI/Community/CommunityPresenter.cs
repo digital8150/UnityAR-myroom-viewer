@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class CommunityPresenter
 {
@@ -11,6 +12,10 @@ public class CommunityPresenter
     private bool _isLoading = false;
     private string _sortBy = "";
 
+    private float _refreshDistance = 100f;
+    private float _startOffset = 10f;
+    private bool _refreshTriggered = false;
+
     public CommunityPresenter(CommunityView view)
     {
         _view = view;
@@ -21,6 +26,32 @@ public class CommunityPresenter
         if (pos.y <= 0.1f)
         {
             LoadPage();
+        }
+
+
+        // 2. 상단 새로고침 (절대 좌표 기반)
+        // content의 y좌표가 0보다 작아질 때가 '오버 스크롤' 상태입니다. (Top Anchor 기준)
+        float overScrollY = -_view.GetContentAnchoredY();
+
+        if (overScrollY > _startOffset)
+        {
+            // (현재 당긴 거리 - 시작 지점) / (목표 거리 - 시작 지점)
+            float alpha = (overScrollY - _startOffset) / (_refreshDistance - _startOffset);
+            _view.SetRefreshIndicatorAlpha(Mathf.Clamp01(alpha));
+        }
+        else
+        {
+            _view.SetRefreshIndicatorAlpha(0);
+        }
+
+        if (overScrollY > _refreshDistance)
+        {
+           _refreshTriggered = true;
+        }
+
+        if(overScrollY <= _startOffset && _refreshTriggered)
+        {
+            RefreshPosts();
         }
     }
 
@@ -74,6 +105,15 @@ public class CommunityPresenter
         }
 
         _isLoading = false;
+    }
+
+    private void RefreshPosts()
+    {
+        _refreshTriggered = false;
+        _view.ClearPosts();
+        _pageIndex = 0;
+        _isLastPage = false;
+        LoadPage();
     }
 
     private string TranslateCategory(string category)
