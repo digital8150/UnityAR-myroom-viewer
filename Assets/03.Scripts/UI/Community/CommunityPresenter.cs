@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class CommunityPresenter
 {
-    private const int VIEW_PER_PAGE = 11;
+    private const int VIEW_PER_PAGE = 6;
     private CommunityView _view;
     private int _pageIndex = 0;
 
