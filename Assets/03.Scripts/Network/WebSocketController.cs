@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NativeCameraNamespace;
+using System;
 using System.Collections;
 using System.IO;
 using System.Net.WebSockets;
@@ -11,7 +12,7 @@ public class WebsocketController : MonoBehaviour
 {
     [Header("웹소켓 설정")]
     [SerializeField]
-    private string _serverUri = "ws://home.codingbot.kr:8080/ws/websocket";
+    private string _serverUri;
 
     public static WebsocketController Instance { get; private set; }
 
@@ -32,6 +33,14 @@ public class WebsocketController : MonoBehaviour
         else { Destroy(gameObject); }
     }
 
+    private void Start()
+    {
+        if(_serverUri == String.Empty)
+        {
+            _serverUri = $"ws://{Utils.Settings.Hostname}:8080/ws/websocket";
+        }
+    }
+
     private async void OnDestroy() { await CleanupAsync(); }
     private async void OnApplicationQuit() { await CleanupAsync(); }
 
@@ -41,7 +50,7 @@ public class WebsocketController : MonoBehaviour
         // pauseStatus가 false면 앱이 다시 켜진 것 (Resume)
         if (!pauseStatus)
         {
-            Debug.Log($"Recovered from sleep, is websocket open? : {_webSocket.State == WebSocketState.Open}");
+            Debug.Log($"Recovered from sleep, is websocket open? : {_webSocket?.State == WebSocketState.Open}");
             if (_webSocket == null || _webSocket.State != WebSocketState.Open)
             {
                 _ = ReconnectAsync();

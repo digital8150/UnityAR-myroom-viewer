@@ -11,9 +11,11 @@ public class HomeView : MonoBehaviour, IHomeView
     //--- Settings ---//
     [Header("Buttons")]
     [SerializeField]
-    private Button toGenerate3DBtn;
+    private Button _toGenerate3DBtn;
     [SerializeField]
-    private Button toProjectsBtn;
+    private Button _toProjectsBtn;
+    [SerializeField]
+    private Button _toProjectsBtn2;
 
     //--- Fields ---//
     private HomePresenter _presenter;
@@ -22,14 +24,16 @@ public class HomeView : MonoBehaviour, IHomeView
     private void Awake()
     {
         _presenter = new HomePresenter(this);
-        toGenerate3DBtn?.onClick.AddListener(_presenter.OnToGenerate3DClicked);
-        toProjectsBtn?.onClick.AddListener(_presenter.OnToProjectsClicked);
+        _toGenerate3DBtn?.onClick.AddListener(_presenter.OnToGenerate3DClicked);
+        _toProjectsBtn?.onClick.AddListener(_presenter.OnToProjectsClicked);
+        _toProjectsBtn2?.onClick.AddListener(_presenter.OnToProjectsClicked);
     }
 
     private void OnDestroy()
     {
-        toGenerate3DBtn?.onClick.RemoveAllListeners();
-        toProjectsBtn?.onClick.RemoveAllListeners();
+        _toGenerate3DBtn?.onClick.RemoveAllListeners();
+        _toProjectsBtn?.onClick.RemoveAllListeners();
+        _toProjectsBtn2?.onClick.RemoveAllListeners();
     }
     //--- Public Methods ---//
 
