@@ -4,7 +4,7 @@ namespace Utils
 {
     public static class Settings
     {
-        private static string hostname = "home.codingbot.kr";
+        private static string hostname = "localhost";
 
         public static string BaseUrl => $"http://{hostname}:8080";
 
