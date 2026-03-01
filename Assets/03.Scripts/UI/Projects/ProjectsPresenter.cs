@@ -103,6 +103,7 @@ public class ProjectsPresenter : IDisposable
 
     public void ToGenerate3DClicked()
     {
+        Utils.SceneHistory.MarkCurrentScene();
         SceneManager.LoadScene("Generate3D");
     }
 
@@ -137,6 +138,8 @@ public class ProjectsPresenter : IDisposable
 
     private void OnButtonClicked(int modelId)
     {
-        Debug.Log($"ViewSlot Button Clicked ID : {modelId}");
+        ProjectInspectPresenter.SelectedModelId = modelId;
+        Utils.SceneHistory.MarkCurrentScene();
+        SceneManager.LoadScene("ProjectInspect");
     }
 }

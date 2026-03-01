@@ -5,6 +5,9 @@ using UnityEngine.UI;
 
 public class ProjectInspectView : MonoBehaviour
 {
+    [Header("General")]
+    [SerializeField] private Button _returnBtn;
+
     [Header("Pages")]
     [SerializeField] private GameObject _page3Done;
     [SerializeField] private GameObject _page4Failed;
@@ -13,14 +16,29 @@ public class ProjectInspectView : MonoBehaviour
     [SerializeField] private ProceduralImage _doneImage;
 
     [Header("Page 4 : Failed Page")]
-    [SerializeField] private Button _reTryTakePicktureBtn;
-    [SerializeField] private Button _selectAnotherPictureBtn;
+    [SerializeField] private Button _reTryBtn;
     [SerializeField] private TextMeshProUGUI _generateFailReasonText;
 
-    private static int _selectedModelId;
-    public static int SelectedModelId
+    private ProjectInspectPresenter _presenter;
+
+
+
+    private void Awake()
     {
-        set { _selectedModelId = value; }
+        _presenter = new ProjectInspectPresenter(this);
+    }
+
+    private void Start()
+    {
+        _presenter.InitializeView();
+        _returnBtn.onClick.AddListener(_presenter.OnReturnClicked);
+        _reTryBtn.onClick.AddListener(_presenter.OnRetryClicked);
+    }
+
+    private void OnDestroy()
+    {
+        _returnBtn.onClick.RemoveAllListeners();
+        _reTryBtn.onClick.RemoveAllListeners();
     }
 
     public void ShowDonePage()
@@ -57,7 +75,7 @@ public class ProjectInspectView : MonoBehaviour
         _generateFailReasonText.text = reason;
     }
 
-    private void HideAllPage()
+    public void HideAllPage()
     {
         if (_page3Done) _page3Done.SetActive(false);
         if (_page4Failed) _page4Failed.SetActive(false);

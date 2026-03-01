@@ -85,6 +85,7 @@ public class Generate3DPresenter
             Debug.LogError($"[Generate3DPresenter.cs] Something went wrong while uploading image!! responseCode : {resultCode} response modelId : {GenerateProcessingModelID}");
             return;
         }
+        Utils.SceneHistory.MarkCurrentScene();
         SceneManager.LoadScene("Projects");
     }
 
