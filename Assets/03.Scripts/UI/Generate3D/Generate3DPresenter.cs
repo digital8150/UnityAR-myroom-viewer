@@ -77,7 +77,7 @@ public class Generate3DPresenter
     {
         Debug.Log("User confirmed model generation");
         long resultCode;
-        (resultCode, GenerateProcessingModelID) = await Generate3DService.PostUpload(_imagePath);
+        (resultCode, GenerateProcessingModelID) = await Generate3DService.PostUpload(_imagePath, furniture_type:"temp", name:"내 가구", isShared:false); // 임시 가구 업로드
         Debug.Log($"Upload request response code : {resultCode}");
         if(resultCode != 200)
         {

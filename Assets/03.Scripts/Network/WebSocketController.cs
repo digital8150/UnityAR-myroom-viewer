@@ -225,12 +225,14 @@ public class WebsocketController : MonoBehaviour
         {
             UnityMainThreadDispatcher.Enqueue(() => {
                 OnModel3DGenerated?.Invoke(body);
+                Generate3DPresenter.GenerateProcessingModelID = -1; // 처리 완료 후 ID 초기화
             });
         }
         else if (body.Contains("MODEL_GENERATION_FAILED"))
         {
             UnityMainThreadDispatcher.Enqueue(() => {
                 OnModel3DGenerateFailed?.Invoke(body);
+                Generate3DPresenter.GenerateProcessingModelID = -1; // 처리 완료 후 ID 초기화
             });
         }
     }
