@@ -1,13 +1,15 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
 public class PopupPresenter
 {
-    IPopupView _view;
+    PopupView _view;
 
     public event System.Action OnPopupYesClicked;
     public event System.Action OnPopupNoClicked;
 
-    public PopupPresenter(IPopupView view)
+    public PopupPresenter(PopupView view)
     {
         _view = view;
     }
