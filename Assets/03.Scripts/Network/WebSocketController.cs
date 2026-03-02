@@ -1,4 +1,4 @@
-﻿using NativeCameraNamespace;
+﻿    using NativeCameraNamespace;
 using System;
 using System.Collections;
 using System.IO;

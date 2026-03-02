@@ -128,7 +128,7 @@ public class ProjectsPresenter : IDisposable
         try
         {
             ModelGenerationResponse modelGenerationResponse = JsonConvert.DeserializeObject<ModelGenerationResponse>(websocketResponse);
-            //TODO : 모델 생성 완료 (성공/실패) 시 가장 최상단에 모델 업데이트 하기 (현재는 모델 아이디를 알 수 없음...)
+            //TODO : 모델 생성 완료 (성공/실패) 시 가장 최상단에 모델 업데이트 하기
         }
         catch
         {
