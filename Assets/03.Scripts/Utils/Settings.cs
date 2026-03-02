@@ -4,9 +4,9 @@ namespace Utils
 {
     public static class Settings
     {
-        public static string Hostname => "localhost";
+        public static string Hostname => "3.34.99.4";
 
-        public static string BaseUrl => $"http://{Hostname}:8080";
+        public static string BaseUrl => $"http://{Hostname}";
 
         public static string ReplaceLocalhost(string url)
         {
