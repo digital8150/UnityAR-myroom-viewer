@@ -14,6 +14,12 @@ public class ProjectInspectView : MonoBehaviour
 
     [Header("Page 3 : Done Page")]
     [SerializeField] private ProceduralImage _doneImage;
+    [SerializeField] private TMP_InputField _sizeInputField;
+    [SerializeField] private TMP_InputField _webSiteInputField;
+    [SerializeField] private TMP_InputField _nameInputField;
+    [SerializeField] private TMP_InputField _descriptionInputField;
+    [SerializeField] private Button _saveButton;
+    [SerializeField] private Button _onArPlaceButton;
 
     [Header("Page 4 : Failed Page")]
     [SerializeField] private Button _reTryBtn;
@@ -41,6 +47,7 @@ public class ProjectInspectView : MonoBehaviour
         _reTryBtn.onClick.RemoveAllListeners();
     }
 
+    //--- Page Control ---//
     public void ShowDonePage()
     {
         if (_page3Done == null)
@@ -61,7 +68,14 @@ public class ProjectInspectView : MonoBehaviour
         _page4Failed?.SetActive(true);
     }
 
-    public void UpdateDoneImage(Sprite sprite)
+    public void HideAllPage()
+    {
+        if (_page3Done) _page3Done.SetActive(false);
+        if (_page4Failed) _page4Failed.SetActive(false);
+    }
+
+    //--- Done Page ---//
+    public void SetDoneImage(Sprite sprite)
     {
         if (_doneImage != null)
         {
@@ -69,15 +83,80 @@ public class ProjectInspectView : MonoBehaviour
         }
     }
 
-    public void UpdateFailReason(string reason)
+    public void SetSizeInputField(string content)
+    {
+        if(_sizeInputField)
+        {
+            _sizeInputField.text = content;
+        }
+    }
+
+    public string GetSizeInputField()
+    {
+        if(_sizeInputField)
+        {
+            return _sizeInputField.text;
+        }
+        return string.Empty;
+    }
+
+    public void SetWebsiteInputField(string content)
+    {
+        if(_webSiteInputField)
+        {
+            _webSiteInputField.text = content;
+        }
+    }
+
+    public string GetWebsiteInputField()
+    {
+        if(_webSiteInputField)
+        {
+            return _webSiteInputField.text;
+        }
+        return string.Empty;
+    }
+
+    public void SetNameInputField(string content)
+    {
+        if(_nameInputField)
+        {
+            _nameInputField.text = content;
+        }
+    }
+
+    public string GetNameInputField()
+    {
+        if(_nameInputField)
+        {
+            return _nameInputField.text;
+        }
+        return string.Empty;
+    }
+
+    public void SetDescriptionInputField(string content)
+    {
+        if(_descriptionInputField)
+        {
+            _descriptionInputField.text = content;
+        }
+    }
+
+    public string GetDescriptionInputField()
+    {
+        if(_descriptionInputField)
+        {
+            return _descriptionInputField.text;
+        }
+        return string.Empty;
+    }
+
+    //--- Failed Page ---//
+    public void SetFailReason(string reason)
     {
         if (_generateFailReasonText == null) return;
         _generateFailReasonText.text = reason;
     }
 
-    public void HideAllPage()
-    {
-        if (_page3Done) _page3Done.SetActive(false);
-        if (_page4Failed) _page4Failed.SetActive(false);
-    }
+
 }

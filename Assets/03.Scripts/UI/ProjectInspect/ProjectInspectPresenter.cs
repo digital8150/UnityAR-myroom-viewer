@@ -62,7 +62,13 @@ public class ProjectInspectPresenter
             switch(modelData.status)
             {
                 case "SUCCESS":
-                    ShowSuccessView(modelData);
+                    string modelDimension;
+                    (responseCode, modelDimension) = await ProjectInspectService.GetModel3DDimension(_selectedModelId);
+                    if (responseCode != 200)
+                    {
+                        modelDimension = "가구 사이즈 정보를 입력해주세요.";
+                    }
+                    ShowSuccessView(modelData, modelDimension);
                     break;
                 case "FAILED":
                     ShowFailedView(modelData);
@@ -83,10 +89,14 @@ public class ProjectInspectPresenter
     }
     
 
-    private async void ShowSuccessView(ModelData modelData)
+    private async void ShowSuccessView(ModelData modelData, string modelDimension)
     {
+        _view.SetNameInputField(modelData.name);
+        _view.SetDescriptionInputField(modelData.description);
+        _view.SetWebsiteInputField(modelData.link);
+        _view.SetSizeInputField(modelDimension);
         _view.ShowDonePage();
-        _view.UpdateDoneImage(await Utils.ImageUtils.LoadSpriteFromUrl(modelData.thumbnailUrl));
+        _view.SetDoneImage(await Utils.ImageUtils.LoadSpriteFromUrl(modelData.thumbnailUrl));
     }
 
     private void ShowFailedView(ModelData modelData)

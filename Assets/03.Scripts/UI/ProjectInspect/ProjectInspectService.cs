@@ -4,6 +4,30 @@ using UnityEngine.Networking;
 
 public class ProjectInspectService
 {
+    public static async Task<(long, string)> GetModel3DDimension(int modelId)
+    {
+        long responseCode = 404;
+        using(var request = UnityWebRequest.Get($"{Utils.Settings.BaseUrl}/api/model3d/{modelId}/dimensions"))
+        {
+            request.SetRequestHeader("Authorization", $"Bearer {JWTToken.Token}");
+            request.SetRequestHeader("accept", "application/json");
+
+            var operation = request.SendWebRequest();
+
+            while(!operation.isDone) await Task.Yield();
+
+            responseCode = request.responseCode;
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"Request Failed: {request.error} | Details: {request.downloadHandler.text}");
+                return (responseCode, string.Empty);
+            }
+
+            string body = request.downloadHandler.text;
+            return (responseCode, body);
+        }
+    }
+
     public static async Task<long> DeleteModel3D(int modelId)
     {
         long responseCode = 0;

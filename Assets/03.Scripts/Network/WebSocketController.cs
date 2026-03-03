@@ -37,7 +37,7 @@ public class WebsocketController : MonoBehaviour
     {
         if(_serverUri == String.Empty)
         {
-            _serverUri = $"ws://{Utils.Settings.Hostname}:8080/ws/websocket";
+            _serverUri = $"ws://{Utils.Settings.Hostname}/ws/websocket";
         }
     }
 
