@@ -26,39 +26,10 @@ public class ProjectsPresenter : IDisposable
         WebsocketController.Instance.OnModel3DGenerateFailed -= HandleModelGenerated;
     }
 
-    public async void StartUp()
+    public void StartUp()
     {
-        if(Generate3DPresenter.GenerateProcessingModelID == -1)
-        {
-            LoadPage();
-            return;
-        }
-
-        long responseCode;
-        string jsonBody;
-        (responseCode, jsonBody) = await ProjectsService.GetSingleModel3D(Generate3DPresenter.GenerateProcessingModelID);
-
-        try
-        {
-            if (responseCode == 200 && !string.IsNullOrEmpty(jsonBody))
-            {
-                ModelData data = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelData>(jsonBody);
-                _view.UpdateOrAddViewItem(
-                    await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(data.thumbnailUrl)),
-                    data.name,
-                    data.id,
-                    TranslateStatus(data.status),
-                    () => OnButtonClicked(data.id));
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.LogException(ex);
-        }
-        finally
-        {
-            LoadPage();
-        }
+        _sortBy = "createdAt,desc";
+        LoadPage();
     }
 
     public async void LoadPage()
@@ -81,12 +52,14 @@ public class ProjectsPresenter : IDisposable
                 ModelSearchResponse data = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelSearchResponse>(jsonBody);
                 foreach (var item in data.content)
                 {
-                    _view.UpdateOrAddViewItem(
-                        await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(item.thumbnailUrl)),
+                    var itemView = _view.UpdateOrAddViewItem(
+                        null,
                         item.name,
                         item.id,
                         TranslateStatus(item.status),
                         () => OnButtonClicked(item.id));
+
+                    LoadThumbnailAsync(itemView, item.thumbnailUrl);
                 }
 
                 _isLastPage = data.last;
@@ -105,6 +78,22 @@ public class ProjectsPresenter : IDisposable
     {
         Utils.SceneHistory.MarkCurrentScene();
         SceneManager.LoadScene("Generate3D");
+    }
+
+    private async void LoadThumbnailAsync(ViewSlotsView itemView, string thumbnailUrl)
+    {
+        try
+        {
+            Sprite thumbnailSprite = await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(thumbnailUrl));
+            if(itemView && thumbnailSprite)
+            {
+                itemView.UpdateThumbnailImage(thumbnailSprite);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+        }
     }
 
     private string TranslateStatus(string status)

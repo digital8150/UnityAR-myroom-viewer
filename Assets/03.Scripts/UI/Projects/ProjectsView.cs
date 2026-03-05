@@ -67,7 +67,7 @@ public class ProjectsView : MonoBehaviour
     /// <param name="name">프로젝트 이름</param>
     /// <param name="modelId">데이터 고유 식별자 (조회 기준)</param>
     /// <param name="status">현재 진행 상태 텍스트</param>
-    public void UpdateOrAddViewItem(Sprite imageSprite, string name, int modelId, string status, UnityAction buttonHandler)
+    public ViewSlotsView UpdateOrAddViewItem(Sprite imageSprite, string name, int modelId, string status, UnityAction buttonHandler)
     {
         var find = _slotsViewList.Find(item => item.ModelId == modelId);
 
@@ -76,16 +76,17 @@ public class ProjectsView : MonoBehaviour
             var viewSlot = Instantiate(_viewSlotPrefab, _gridParent.transform);
             viewSlot.ModelId = modelId;
             viewSlot.UpdateProjectNameText(name);
-            viewSlot.UpdateThumbnailImage(imageSprite);
+            if(imageSprite) viewSlot.UpdateThumbnailImage(imageSprite);
             viewSlot.UpdateStatusText(status);
             viewSlot.GetButton()?.onClick.AddListener(buttonHandler);
             _slotsViewList.Add(viewSlot);
-            return;
+            return viewSlot;
         }
 
         find.UpdateProjectNameText(name);
-        find.UpdateThumbnailImage(imageSprite);
+        if(imageSprite) find.UpdateThumbnailImage(imageSprite);
         find.UpdateStatusText(status);
+        return find;
     }
 
     public bool UpdateViewSlotStatusWithID(int id, string status)
