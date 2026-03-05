@@ -117,12 +117,20 @@ public class ProjectsPresenter : IDisposable
         try
         {
             ModelGenerationResponse modelGenerationResponse = JsonConvert.DeserializeObject<ModelGenerationResponse>(websocketResponse);
-            //TODO : 모델 생성 완료 (성공/실패) 시 가장 최상단에 모델 업데이트 하기
+            RefreshView();
         }
         catch
         {
 
         }
+    }
+
+    private void RefreshView()
+    {
+        _pageIndex = 0;
+        _isLastPage = false;
+        _view.ClearViewItems();
+        LoadPage();
     }
 
     private void OnButtonClicked(int modelId)

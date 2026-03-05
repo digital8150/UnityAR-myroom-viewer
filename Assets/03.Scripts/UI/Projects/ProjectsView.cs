@@ -101,6 +101,15 @@ public class ProjectsView : MonoBehaviour
         return false;
     }
 
+    public void ClearViewItems()
+    {
+        foreach(var viewSlot in _slotsViewList)
+        {
+            if(viewSlot) Destroy(viewSlot.gameObject);
+        }
+        _slotsViewList.Clear();
+    }
+
     private void OnScrollChanged(Vector2 pos)
     {
         if (pos.y <= 0.1f)
