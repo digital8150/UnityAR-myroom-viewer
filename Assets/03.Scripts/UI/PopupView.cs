@@ -75,6 +75,9 @@ public class PopupView : MonoBehaviour
     [SerializeField]
     private float _animDuration = 0.3f;
 
+    [Header("Notification Common Icons")]
+    public Sprite GreenCheckCircle;
+
     private static bool _isShowingPopup = false;
 
     private PopupPresenter _presenter;

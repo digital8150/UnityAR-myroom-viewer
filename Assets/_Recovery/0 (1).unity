@@ -6712,10 +6712,6 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4102480739660474389, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: GreenCheckCircle
-      value: 
-      objectReference: {fileID: 21300000, guid: f0d79e4c8d20237419f31bd4c5843466, type: 3}
-    - target: {fileID: 4102480739660474389, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
       propertyPath: _notificationIcon
       value: 
       objectReference: {fileID: 481191337}

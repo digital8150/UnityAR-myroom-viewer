@@ -14,10 +14,13 @@ public class ProjectInspectView : MonoBehaviour
 
     [Header("Page 3 : Done Page")]
     [SerializeField] private ProceduralImage _doneImage;
-    [SerializeField] private TMP_InputField _sizeInputField;
+    [SerializeField] private TMP_InputField _widthInputField;
+    [SerializeField] private TMP_InputField _heightInputField;
+    [SerializeField] private TMP_InputField _lengthInputField;
     [SerializeField] private TMP_InputField _webSiteInputField;
     [SerializeField] private TMP_InputField _nameInputField;
     [SerializeField] private TMP_InputField _descriptionInputField;
+    [SerializeField] private Toggle _isPublicToggle;
     [SerializeField] private Button _saveButton;
     [SerializeField] private Button _onArPlaceButton;
 
@@ -37,14 +40,16 @@ public class ProjectInspectView : MonoBehaviour
     private void Start()
     {
         _presenter.InitializeView();
-        _returnBtn.onClick.AddListener(_presenter.OnReturnClicked);
-        _reTryBtn.onClick.AddListener(_presenter.OnRetryClicked);
+        if(_returnBtn) _returnBtn.onClick.AddListener(_presenter.OnReturnClicked);
+        if(_reTryBtn) _reTryBtn.onClick.AddListener(_presenter.OnRetryClicked);
+        if(_saveButton) _saveButton.onClick.AddListener(_presenter.OnSaveClicked);
     }
 
     private void OnDestroy()
     {
-        _returnBtn.onClick.RemoveAllListeners();
-        _reTryBtn.onClick.RemoveAllListeners();
+        if(_returnBtn) _returnBtn.onClick.RemoveAllListeners();
+        if(_reTryBtn) _reTryBtn.onClick.RemoveAllListeners();
+        if(_saveButton) _saveButton.onClick.RemoveAllListeners();
     }
 
     //--- Page Control ---//
@@ -83,21 +88,38 @@ public class ProjectInspectView : MonoBehaviour
         }
     }
 
-    public void SetSizeInputField(string content)
+    public void SetSizeInputField(ModelDimension modelDimension)
     {
-        if(_sizeInputField)
+        if(_widthInputField)
         {
-            _sizeInputField.text = content;
+            _widthInputField.text = modelDimension.width.ToString();
+        }
+        if(_heightInputField)
+        {
+            _heightInputField.text = modelDimension.height.ToString();
+        }
+        if(_lengthInputField)
+        {
+            _lengthInputField.text = modelDimension.length.ToString();
         }
     }
 
-    public string GetSizeInputField()
+    public ModelDimension GetSizeInputField()
     {
-        if(_sizeInputField)
+        ModelDimension dimension = new ModelDimension();
+        if(_widthInputField && float.TryParse(_widthInputField.text, out float width))
         {
-            return _sizeInputField.text;
+            dimension.width = width;
         }
-        return string.Empty;
+        if(_heightInputField && float.TryParse(_heightInputField.text, out float height))
+        {
+            dimension.height = height;
+        }
+        if(_lengthInputField && float.TryParse(_lengthInputField.text, out float length))
+        {
+            dimension.length = length;
+        }
+        return dimension;
     }
 
     public void SetWebsiteInputField(string content)
@@ -149,6 +171,23 @@ public class ProjectInspectView : MonoBehaviour
             return _descriptionInputField.text;
         }
         return string.Empty;
+    }
+
+    public void SetIsPublicToggle(bool isOn)
+    {
+        if(_isPublicToggle)
+        {
+            _isPublicToggle.isOn = isOn;
+        }
+    }
+
+    public bool GetIsPublicToggle()
+    {
+        if(_isPublicToggle)
+        {
+            return _isPublicToggle.isOn;
+        }
+        return false;
     }
 
     //--- Failed Page ---//

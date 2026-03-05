@@ -38,6 +38,37 @@ public class ProjectInspectPresenter
         }
     }
 
+    public async void OnSaveClicked()
+    {
+        ModelDimension dimension = _view.GetSizeInputField();
+        long responseCode = await ProjectInspectService.PutModel3DDimension(_selectedModelId, dimension);
+        if(responseCode != 200)
+        {
+            Debug.LogError($"[ProjectInspectPresenter.cs] Error while saving dimension into server. code was : {responseCode}");
+            PopupView.Instance.ShowMessage("모델 크기 저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
+            return;
+        }
+
+        ModelUpdateData updateData = new ModelUpdateData
+        {
+            name = _view.GetNameInputField(),
+            description = _view.GetDescriptionInputField(),
+            shopPageLink = _view.GetWebsiteInputField(),
+            is_shared = _view.GetIsPublicToggle()
+        };
+
+        string responseBody;
+        (responseCode, responseBody) = await ProjectInspectService.PutModel3DV2(_selectedModelId, updateData);
+        if (responseCode != 200)
+        {
+            Debug.LogError($"[ProjectInspectPresenter.cs] Error while saving model3dv2 into server. code was : {responseCode}");
+            PopupView.Instance.ShowMessage("모델 정보 저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
+            return;
+        }
+        Debug.Log($"[ProjectInspectPresenter.cs] Successfully saved model info. Response code: {responseCode}, Response body: {responseBody}");
+        PopupView.AddPopup(new PopupContext("모델 정보가 저장되었습니다.", PopupView.Instance.GreenCheckCircle));
+    }
+
     public async void InitializeView()
     {
         long responseCode;
@@ -62,12 +93,18 @@ public class ProjectInspectPresenter
             switch(modelData.status)
             {
                 case "SUCCESS":
-                    string modelDimension;
-                    (responseCode, modelDimension) = await ProjectInspectService.GetModel3DDimension(_selectedModelId);
-                    if (responseCode != 200)
+                    string modelDimensionResponse;
+                    ModelDimension modelDimension;
+                    (responseCode, modelDimensionResponse) = await ProjectInspectService.GetModel3DDimension(_selectedModelId);
+                    if (responseCode == 200)
                     {
-                        modelDimension = "가구 사이즈 정보를 입력해주세요.";
+                        modelDimension = JsonConvert.DeserializeObject<ModelDimension>(modelDimensionResponse);
                     }
+                    else
+                    {
+                        modelDimension = new ModelDimension();
+                    }
+
                     ShowSuccessView(modelData, modelDimension);
                     break;
                 case "FAILED":
@@ -89,19 +126,20 @@ public class ProjectInspectPresenter
     }
     
 
-    private async void ShowSuccessView(ModelData modelData, string modelDimension)
+    private async void ShowSuccessView(ModelData modelData, ModelDimension modelDimension)
     {
         _view.SetNameInputField(modelData.name);
         _view.SetDescriptionInputField(modelData.description);
-        _view.SetWebsiteInputField(modelData.link);
+        _view.SetWebsiteInputField(modelData.shopPageLink);
         _view.SetSizeInputField(modelDimension);
+        _view.SetIsPublicToggle(modelData.is_shared);
         _view.ShowDonePage();
         _view.SetDoneImage(await Utils.ImageUtils.LoadSpriteFromUrl(modelData.thumbnailUrl));
     }
 
     private void ShowFailedView(ModelData modelData)
     {
-        //_view.UpdateFailReason(modelData.failReason);
+        _view.SetFailReason(modelData.errorMessage);
         _view.ShowFailedPage();
     }
 }
