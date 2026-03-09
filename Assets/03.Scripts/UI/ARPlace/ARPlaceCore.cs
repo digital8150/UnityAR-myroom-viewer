@@ -27,6 +27,7 @@ public class ARPlaceCore : MonoBehaviour
     private Quaternion _initialRotation;
     private float _initialMidpointY;
     private float _initialHeight;
+    private float _yOffsetFromPlane = 0f;
 
     void OnEnable() { EnhancedTouchSupport.Enable(); }
     void OnDisable() { EnhancedTouchSupport.Disable(); }
@@ -102,9 +103,9 @@ public class ARPlaceCore : MonoBehaviour
                         }
                         else if (finger.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved && _activeModel != null)
                         {
-                            // 이동 시에도 현재 모델의 Y값(미세 조정된 값)은 유지하고 싶다면:
-                            float currentY = _activeModel.transform.position.y;
-                            _activeModel.transform.position = new Vector3(lowestPosition.x, currentY, lowestPosition.z);
+                            // 평면의 Y값 + 사용자가 세 손가락으로 조절했던 오프셋
+                            float finalY = lowestPosition.y + _yOffsetFromPlane;
+                            _activeModel.transform.position = new Vector3(lowestPosition.x, finalY, lowestPosition.z);
                         }
                     }
                 }
@@ -153,9 +154,15 @@ public class ARPlaceCore : MonoBehaviour
                 float currentMidpointY = (f1.screenPosition.y + f2.screenPosition.y + f3.screenPosition.y) / 3f;
                 float deltaY = currentMidpointY - _initialMidpointY;
 
-                // 기존 높이에서 변화량만큼 더함 (감도 조절 필수)
                 float newY = _initialHeight + (deltaY * _heightSensitivity);
                 _activeModel.transform.position = new Vector3(_activeModel.transform.position.x, newY, _activeModel.transform.position.z);
+
+                // [중요] 조절된 높이와 현재 감지된 평면 사이의 간격을 업데이트
+                // 이동 시 이 간격을 유지하기 위함입니다.
+                if (_arRaycastManager.Raycast(new Vector2(Screen.width / 2, Screen.height / 2), _hits, TrackableType.PlaneWithinPolygon))
+                {
+                    _yOffsetFromPlane = _activeModel.transform.position.y - _hits[0].pose.position.y;
+                }
             }
         }
     }
@@ -195,37 +202,64 @@ public class ARPlaceCore : MonoBehaviour
         _isModelLoading = false; // 로딩 해제
     }
 
-private void ApplyRealScale(GameObject root)
-{
-    Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
-    if (renderers.Length == 0) return;
-
-    // 1. 전체 바운드 계산
-    Bounds combinedBounds = renderers[0].bounds;
-    foreach (var renderer in renderers)
+    private void ApplyRealScale(GameObject root)
     {
-        combinedBounds.Encapsulate(renderer.bounds);
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) return;
+
+        // 1. 스케일 적용 전 원본 바운드 계산
+        Bounds combinedBounds = renderers[0].bounds;
+        foreach (var renderer in renderers)
+        {
+            combinedBounds.Encapsulate(renderer.bounds);
+        }
+
+        // 2. 피벗 보정: 모델의 바닥 중앙(bottomCenter)을 부모(root) 위치로 맞추기 위한 오프셋 계산
+        Vector3 bottomCenter = new Vector3(combinedBounds.center.x, combinedBounds.min.y, combinedBounds.center.z);
+        Vector3 offset = root.transform.position - bottomCenter;
+
+        // 자식들의 월드 위치를 이동시켜 피벗부터 찰떡같이 맞춤
+        foreach (Transform child in root.transform)
+        {
+            child.position += offset;
+        }
+
+        // 3. 스케일 계산 및 적용 (바운드 크기는 이동해도 안 변하니까 그대로 씀)
+        float targetMaxMeter = Mathf.Max(CurrentModelDimension.width, CurrentModelDimension.height, CurrentModelDimension.length) * 0.01f;
+        float currentMax = Mathf.Max(combinedBounds.size.x, combinedBounds.size.y, combinedBounds.size.z);
+        float scaleFactor = (currentMax > 0) ? (targetMaxMeter / currentMax) : 1.0f;
+
+        root.transform.localScale = Vector3.one * scaleFactor;
+
+        // 4. 콜라이더 추가
+        BoxCollider box = root.AddComponent<BoxCollider>();
+        // 이미 모델 바닥이 root의 0,0,0에 있으므로, center Y는 사이즈의 절반만 올리면 됨!
+        box.center = new Vector3(0, combinedBounds.size.y / 2f, 0);
+        box.size = combinedBounds.size;
     }
 
-    // 2. 스케일 계산 (목표 크기 m 단위)
-    float targetMaxMeter = Mathf.Max(CurrentModelDimension.width, 
-                                     CurrentModelDimension.height, 
-                                     CurrentModelDimension.length) * 0.01f;
-    float currentMax = Mathf.Max(combinedBounds.size.x, combinedBounds.size.y, combinedBounds.size.z);
-    float scaleFactor = (currentMax > 0) ? (targetMaxMeter / currentMax) : 1.0f;
-
-    // 3. 스케일 적용 (부모인 root에 바로 적용하는 것이 관리하기 편합니다)
-    root.transform.localScale = Vector3.one * scaleFactor;
-
-    // 4. 피벗 보정 (모델의 바닥을 root의 위치(0,0,0)로 맞춤)
-    // root 내부의 모든 자식을 담고 있는 '인스턴스' 자체를 이동시킵니다.
-    // glTFast가 생성한 최상위 자식 오브젝트를 찾아서 이동
-    foreach (Transform child in root.transform)
+    private void OnDrawGizmos()
     {
-        // 바운드의 중심점에서 바닥까지의 거리(extents.y)를 계산하여 오프셋 결정
-        // 주의: world space 바운드를 사용하므로 scale 적용 전/후 계산 순서가 중요합니다.
-        float bottomOffset = combinedBounds.min.y - root.transform.position.y;
-        child.position -= new Vector3(0, bottomOffset, 0);
+        if (_activeModel == null) return;
+
+        // 1. 모델의 전체 바운드 시각화 (하늘색)
+        Renderer[] renderers = _activeModel.GetComponentsInChildren<Renderer>();
+        if (renderers.Length > 0)
+        {
+            Bounds combinedBounds = renderers[0].bounds;
+            foreach (var r in renderers) combinedBounds.Encapsulate(r.bounds);
+
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawWireCube(combinedBounds.center, combinedBounds.size);
+        }
+
+        // 2. 피벗 포인트(Root Position) 시각화 (빨간 구체)
+        // 이 구체가 모델의 정중앙 바닥에 위치해야 성공입니다.
+        Gizmos.color = Color.red;
+        Gizmos.DrawSphere(_activeModel.transform.position, 0.02f);
+
+        // 3. 정면 방향 표시 (파란 선)
+        Gizmos.color = Color.blue;
+        Gizmos.DrawRay(_activeModel.transform.position, _activeModel.transform.forward * 0.2f);
     }
-}
 }
