@@ -1,6 +1,5 @@
 ﻿using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class Generate3DPresenter
 {
@@ -17,7 +16,7 @@ public class Generate3DPresenter
 
     public void OnReturnClicked()
     {
-        UnityEngine.SceneManagement.SceneManager.LoadScene("Home");
+        Utils.SceneHistory.BackToPrevious();
     }
 
     public void OnLoadImageClicked()
@@ -85,8 +84,7 @@ public class Generate3DPresenter
             Debug.LogError($"[Generate3DPresenter.cs] Something went wrong while uploading image!! responseCode : {resultCode} response modelId : {GenerateProcessingModelID}");
             return;
         }
-        Utils.SceneHistory.MarkCurrentScene();
-        SceneManager.LoadScene("Projects");
+        Utils.SceneHistory.ChangeScene("Projects");
     }
 
     private void OnUserDeniedGeneration()

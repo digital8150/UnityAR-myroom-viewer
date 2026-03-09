@@ -76,8 +76,7 @@ public class ProjectsPresenter : IDisposable
 
     public void ToGenerate3DClicked()
     {
-        Utils.SceneHistory.MarkCurrentScene();
-        SceneManager.LoadScene("Generate3D");
+        Utils.SceneHistory.ChangeScene("Generate3D");
     }
 
     private async void LoadThumbnailAsync(ViewSlotsView itemView, string thumbnailUrl)
@@ -136,7 +135,6 @@ public class ProjectsPresenter : IDisposable
     private void OnButtonClicked(int modelId)
     {
         ProjectInspectPresenter.SelectedModelId = modelId;
-        Utils.SceneHistory.MarkCurrentScene();
-        SceneManager.LoadScene("ProjectInspect");
+        Utils.SceneHistory.ChangeScene("ProjectInspect");
     }
 }

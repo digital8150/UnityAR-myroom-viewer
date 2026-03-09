@@ -1,10 +1,11 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System;
 using Newtonsoft.Json;
 
 public class ProjectInspectPresenter
 {
     private readonly ProjectInspectView _view;
+    private ModelData _modelData;
 
     private static int _selectedModelId;
     public static int SelectedModelId
@@ -20,7 +21,7 @@ public class ProjectInspectPresenter
     //--- Button Handlers ---//
     public void OnReturnClicked()
     {
-        UnityEngine.SceneManagement.SceneManager.LoadScene(Utils.SceneHistory.PreviousScene);
+        Utils.SceneHistory.BackToPrevious();
     }
 
     public async void OnRetryClicked()
@@ -28,14 +29,39 @@ public class ProjectInspectPresenter
         long responseCode = await ProjectInspectService.DeleteModel3D(modelId: _selectedModelId);
         if (responseCode == 200)
         {
-            Utils.SceneHistory.MarkCurrentScene();
-            UnityEngine.SceneManagement.SceneManager.LoadScene("Generate3D");
+            Utils.SceneHistory.ChangeScene("Generate3D");
         }
         else
         {
             Debug.LogError($"[ProjectInspectPresenter.cs] Failed to delete model for retry. Response code: {responseCode}");
-            PopupView.Instance.ShowMessage("¸ğµ¨ »èÁ¦¿¡ ½ÇÆĞÇß½À´Ï´Ù. Àá½Ã ÈÄ ´Ù½Ã ½ÃµµÇØÁÖ¼¼¿ä.");
+            PopupView.Instance.ShowMessage("ëª¨ë¸ ì‚­ì œì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤. ì ì‹œ í›„ ë‹¤ì‹œ ì‹œë„í•´ì£¼ì„¸ìš”.");
         }
+    }
+
+    private bool _isDownloading = false;
+
+    public async void OnARPlaceClicked()
+    {
+        if (_isDownloading) return; // ì¤‘ë³µ í´ë¦­ ë°©ì§€
+        if (string.IsNullOrEmpty(_modelData.link)) return;
+
+        _isDownloading = true;
+        PopupView.Instance.ShowLoading(true);
+
+        var (responseCode, modelPath) = await ProjectInspectService.GetModel3DFile(_modelData.link);
+
+        _isDownloading = false;
+        PopupView.Instance.ShowLoading(false);
+
+        if (responseCode != 200)
+        {
+            Debug.LogError($"Failed to get model. Code: {responseCode}");
+            PopupView.Instance.ShowMessage("ëª¨ë¸ íŒŒì¼ì„ ë¶ˆëŸ¬ì˜¤ëŠ” ë° ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.");
+            return;
+        }
+        ARPlaceCore.CurrentModelDimension = _view.GetSizeInputField();
+        ARPlaceCore.CurrentModelPath = modelPath; // ì´ì œ ë¡œì»¬ ê²½ë¡œê°€ ë“¤ì–´ê°!
+        Utils.SceneHistory.ChangeScene("ARPlace");
     }
 
     public async void OnSaveClicked()
@@ -45,7 +71,7 @@ public class ProjectInspectPresenter
         if(responseCode != 200)
         {
             Debug.LogError($"[ProjectInspectPresenter.cs] Error while saving dimension into server. code was : {responseCode}");
-            PopupView.Instance.ShowMessage("¸ğµ¨ Å©±â ÀúÀå¿¡ ½ÇÆĞÇß½À´Ï´Ù. Àá½Ã ÈÄ ´Ù½Ã ½ÃµµÇØÁÖ¼¼¿ä.");
+            PopupView.Instance.ShowMessage("ëª¨ë¸ í¬ê¸° ì €ì¥ì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤. ì ì‹œ í›„ ë‹¤ì‹œ ì‹œë„í•´ì£¼ì„¸ìš”.");
             return;
         }
 
@@ -62,11 +88,11 @@ public class ProjectInspectPresenter
         if (responseCode != 200)
         {
             Debug.LogError($"[ProjectInspectPresenter.cs] Error while saving model3dv2 into server. code was : {responseCode}");
-            PopupView.Instance.ShowMessage("¸ğµ¨ Á¤º¸ ÀúÀå¿¡ ½ÇÆĞÇß½À´Ï´Ù. Àá½Ã ÈÄ ´Ù½Ã ½ÃµµÇØÁÖ¼¼¿ä.");
+            PopupView.Instance.ShowMessage("ëª¨ë¸ ì •ë³´ ì €ì¥ì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤. ì ì‹œ í›„ ë‹¤ì‹œ ì‹œë„í•´ì£¼ì„¸ìš”.");
             return;
         }
         Debug.Log($"[ProjectInspectPresenter.cs] Successfully saved model info. Response code: {responseCode}, Response body: {responseBody}");
-        PopupView.AddPopup(new PopupContext("¸ğµ¨ Á¤º¸°¡ ÀúÀåµÇ¾ú½À´Ï´Ù.", PopupView.Instance.GreenCheckCircle));
+        PopupView.AddPopup(new PopupContext("ëª¨ë¸ ì •ë³´ê°€ ì €ì¥ë˜ì—ˆìŠµë‹ˆë‹¤.", PopupView.Instance.GreenCheckCircle));
     }
 
     public async void InitializeView()
@@ -83,14 +109,14 @@ public class ProjectInspectPresenter
 
         try
         {
-            ModelData modelData = JsonConvert.DeserializeObject<ModelData>(responseBody);
-            if (modelData == null)
+            _modelData = JsonConvert.DeserializeObject<ModelData>(responseBody);
+            if (_modelData == null)
             {
                 Debug.LogError($"[ProjectsInspectView.cs] Deserialized model data is null.");
                 return;
             }
 
-            switch(modelData.status)
+            switch(_modelData.status)
             {
                 case "SUCCESS":
                     string modelDimensionResponse;
@@ -105,17 +131,17 @@ public class ProjectInspectPresenter
                         modelDimension = new ModelDimension();
                     }
 
-                    ShowSuccessView(modelData, modelDimension);
+                    ShowSuccessView(_modelData, modelDimension);
                     break;
                 case "FAILED":
-                    ShowFailedView(modelData);
+                    ShowFailedView(_modelData);
                     break;
                 case "PROCESSING":
                     _view.HideAllPage();
-                    PopupView.Instance.ShowMessage("¸ğµ¨ÀÌ ¾ÆÁ÷ Ã³¸®ÁßÀÔ´Ï´Ù.");
+                    PopupView.Instance.ShowMessage("ëª¨ë¸ì´ ì•„ì§ ì²˜ë¦¬ì¤‘ì…ë‹ˆë‹¤.");
                     break;
                 default:
-                    Debug.LogWarning($"[ProjectsInspectView.cs] Unknown model status: {modelData.status}");
+                    Debug.LogWarning($"[ProjectsInspectView.cs] Unknown model status: {_modelData.status}");
                     break;
             }
         }

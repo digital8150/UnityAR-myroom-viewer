@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI.ProceduralImage;
 using UnityEngine.UI;
@@ -43,6 +43,7 @@ public class ProjectInspectView : MonoBehaviour
         if(_returnBtn) _returnBtn.onClick.AddListener(_presenter.OnReturnClicked);
         if(_reTryBtn) _reTryBtn.onClick.AddListener(_presenter.OnRetryClicked);
         if(_saveButton) _saveButton.onClick.AddListener(_presenter.OnSaveClicked);
+        if(_onArPlaceButton) _onArPlaceButton.onClick.AddListener(_presenter.OnARPlaceClicked);
     }
 
     private void OnDestroy()
@@ -50,6 +51,7 @@ public class ProjectInspectView : MonoBehaviour
         if(_returnBtn) _returnBtn.onClick.RemoveAllListeners();
         if(_reTryBtn) _reTryBtn.onClick.RemoveAllListeners();
         if(_saveButton) _saveButton.onClick.RemoveAllListeners();
+        if(_onArPlaceButton) _onArPlaceButton.onClick.RemoveAllListeners();
     }
 
     //--- Page Control ---//

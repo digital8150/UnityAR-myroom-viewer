@@ -39,8 +39,6 @@ public class AuthView : MonoBehaviour, IAuthView
     void Start()
     {
         ShowLoginPanel();
-        //Screen.fullScreen = false;
-        ApplicationChrome.statusBarState = ApplicationChrome.States.TranslucentOverContent;
     }
 
     private void OnDestroy()

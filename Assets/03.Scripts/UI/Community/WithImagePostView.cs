@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI.ProceduralImage;
 using UnityEngine.UI;
@@ -20,7 +20,7 @@ public class WithImagePostView : NoImagePostView
     {
         if(_thumbnailImage != null)
         {
-            Sprite sprite = await Utils.ImageUtils.LoadSpriteFromUrl(imageUrl);
+            Sprite sprite = await Utils.ImageUtils.LoadSpriteFromUrlAlternative(imageUrl);
             if (sprite != null)
             {
                 _thumbnailImage.sprite = sprite;

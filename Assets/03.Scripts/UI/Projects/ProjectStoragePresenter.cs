@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class ProjectStoragePresenter
 {
@@ -12,6 +11,6 @@ public class ProjectStoragePresenter
 
     public void OnToHomeClicked()
     {
-        SceneManager.LoadScene("Home");
+        Utils.SceneHistory.BackToPrevious();
     }
 }

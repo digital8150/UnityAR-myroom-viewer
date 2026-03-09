@@ -165,6 +165,11 @@ public class PopupView : MonoBehaviour
         Debug.LogError("PopupView: ShowYesNoMessage - One or more UI components are not assigned in the inspector.");
     }
 
+    public void ShowLoading(bool show)
+    {
+        _backgroundBlockerPanel.SetActive(show);
+    }
+
     /// <summary>
     /// 플레이어 HUD에 표출할 알림을 등록합니다.
     /// </summary>

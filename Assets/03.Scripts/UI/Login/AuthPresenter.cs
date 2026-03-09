@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class AuthPresenter
 {
@@ -28,7 +27,7 @@ public class AuthPresenter
         {
             JWTToken.Token = token;
             await WebsocketController.Instance?.ConnectToServer();
-            SceneManager.LoadScene("Home");
+            Utils.SceneHistory.ChangeScene("Home");
         }
         else
         {
