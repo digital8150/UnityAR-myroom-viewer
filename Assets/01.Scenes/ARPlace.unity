@@ -759,7 +759,7 @@ ParticleSystem:
       serializedVersion: 2
       minMaxState: 0
       minColor: {r: 1, g: 1, b: 1, a: 1}
-      maxColor: {r: 0.99215686, g: 0.72156864, b: 0.07450981, a: 1}
+      maxColor: {r: 1, g: 1, b: 1, a: 1}
       maxGradient:
         serializedVersion: 2
         key0: {r: 1, g: 1, b: 1, a: 1}
@@ -6036,6 +6036,7 @@ MonoBehaviour:
   _arRaycastManager: {fileID: 1828601340}
   _arPlaneManager: {fileID: 1828601336}
   _rotationSensitivity: 0.5
+  _heightSensitivity: 0.001
 --- !u!1 &1114040580
 GameObject:
   m_ObjectHideFlags: 0
@@ -6325,7 +6326,7 @@ MonoBehaviour:
   <trackablesChanged>k__BackingField:
     m_PersistentCalls:
       m_Calls: []
-  m_PlanePrefab: {fileID: 782628375}
+  m_PlanePrefab: {fileID: 0}
   m_DetectionMode: 1
 --- !u!114 &1828601337
 MonoBehaviour:
