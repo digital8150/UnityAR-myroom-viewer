@@ -13,6 +13,8 @@ public class LightManager : MonoBehaviour
 
     [Header("Settings")]
     [SerializeField] private float _lightIntensityMult = 1.5f;
+    [SerializeField] private float _lightIntensityMax = 2.5f;
+    [SerializeField] private float _lightIntesityMin = 0.1f;
 
     public static Color LightColor;
     public static float LightIntensity;
@@ -70,14 +72,8 @@ public class LightManager : MonoBehaviour
                 _directionalLight.color = new Color(hdrColor.r / extractedIntensity, hdrColor.g / extractedIntensity, hdrColor.b / extractedIntensity, 1f);
 
                 // 2. 뽑아낸 가장 큰 값을 밝기에 적용 (너무 어둡거나 밝으면 뒤에 곱하기/나누기로 보정해 주면 됨)
-                _directionalLight.intensity = extractedIntensity * _lightIntensityMult;
+                _directionalLight.intensity = Mathf.Clamp(extractedIntensity * _lightIntensityMult, _lightIntesityMin, _lightIntensityMax);
             }
-        }
-
-        if (args.lightEstimation.mainLightIntensityLumens.HasValue)
-        {
-            // mainLightIntensityMultiplier가 지원되는 기기면 기존 밝기를 덮어씌움!
-            _directionalLight.intensity = args.lightEstimation.mainLightIntensityLumens.Value;
         }
 
         LightColor = _directionalLight.color;
