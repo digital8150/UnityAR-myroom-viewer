@@ -7,6 +7,7 @@ namespace Utils
     {
         // 씬 이름을 차곡차곡 쌓을 스택
         private static Stack<string> history = new Stack<string>();
+        private const string HOME_SCENE = "Home"; 
 
         // 1) 씬 이동: 현재 씬을 기록하고 새로운 씬으로 이동
         public static void ChangeScene(string sceneName)
@@ -32,6 +33,7 @@ namespace Utils
             {
                 // 이전 기록이 없을 때의 예외 처리 (보통 메인 로비로 보내거나 로그를 남김)
                 UnityEngine.Debug.LogWarning("No more scene history to go back to!");
+                SceneManager.LoadScene(HOME_SCENE);
             }
         }
 
