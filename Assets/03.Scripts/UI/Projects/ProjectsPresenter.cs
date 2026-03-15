@@ -83,7 +83,7 @@ public class ProjectsPresenter : IDisposable
     {
         try
         {
-            Sprite thumbnailSprite = await Utils.ImageUtils.LoadSpriteFromUrl(Utils.Settings.ReplaceLocalhost(thumbnailUrl));
+            Sprite thumbnailSprite = await Utils.ImageUtils.LoadSpriteFromUrlAsync(Utils.Settings.ReplaceLocalhost(thumbnailUrl));
             if(itemView && thumbnailSprite)
             {
                 itemView.UpdateThumbnailImage(thumbnailSprite);

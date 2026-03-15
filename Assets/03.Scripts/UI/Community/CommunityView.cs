@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,9 +10,11 @@ public class CommunityView : MonoBehaviour
     [SerializeField] private WithImagePostView _withImagePostViewPrefab;
 
     [Header("Components")]
+    [SerializeField] private Button _returnButton;
     [SerializeField] private GameObject _verticalLayoutParent;
     [SerializeField] private ScrollRect _scrollRect;
     [SerializeField] private TextMeshProUGUI _refreshIndicator;
+    [SerializeField] private PostView _postView;
 
     private CommunityPresenter _presenter;
 
@@ -20,12 +22,13 @@ public class CommunityView : MonoBehaviour
 
     private void Awake()
     {
-        _presenter = new CommunityPresenter(this);
+        _presenter = new CommunityPresenter(this, _postView);
     }
 
     private void Start()
     {
         _scrollRect.onValueChanged.AddListener(_presenter.OnScrollChanged);
+        _returnButton.onClick.AddListener(_presenter.OnReturnButtonClicked);
         _presenter.LoadPage();
     }
 

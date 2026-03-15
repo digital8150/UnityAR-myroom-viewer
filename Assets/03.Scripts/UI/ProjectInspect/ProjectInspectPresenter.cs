@@ -160,7 +160,7 @@ public class ProjectInspectPresenter
         _view.SetSizeInputField(modelDimension);
         _view.SetIsPublicToggle(modelData.is_shared);
         _view.ShowDonePage();
-        _view.SetDoneImage(await Utils.ImageUtils.LoadSpriteFromUrl(modelData.thumbnailUrl));
+        _view.SetDoneImage(await Utils.ImageUtils.LoadSpriteFromUrlAsync(modelData.thumbnailUrl));
     }
 
     private void ShowFailedView(ModelData modelData)

@@ -6,7 +6,8 @@ namespace Utils
 {
     public static class ImageUtils
     {
-        public static async Task<Sprite> LoadSpriteFromUrl(string url)
+
+        public static async Task<Sprite> LoadSpriteFromUrlAsync(string url)
         {
             if (string.IsNullOrEmpty(url)) return null;
 

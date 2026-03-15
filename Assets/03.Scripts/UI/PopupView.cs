@@ -270,7 +270,7 @@ public class PopupView : MonoBehaviour
         {
             ModelGenerationResponse wsData = JsonConvert.DeserializeObject<ModelGenerationResponse>(msg);
             string content = $"<b>모델 생성 완료</b>\n<size=95%>업로드하신 가구의 3D 모델이 정상적으로 생성되었어요.";
-            AddPopup(new PopupContext(content, await Utils.ImageUtils.LoadSpriteFromUrl(wsData.thumbnailUrl)));
+            AddPopup(new PopupContext(content, await Utils.ImageUtils.LoadSpriteFromUrlAsync(wsData.thumbnailUrl)));
 
         }catch(Exception ex)
         {
@@ -284,7 +284,7 @@ public class PopupView : MonoBehaviour
         {
             ModelGenerationResponse wsData = JsonConvert.DeserializeObject<ModelGenerationResponse>(msg);
             string content = $"<b>모델 생성 실패</b>\n<size=95%>업로드 하신 가구의 3D 모델을 생성하지 못했습니다.";
-            AddPopup(new PopupContext(content, await Utils.ImageUtils.LoadSpriteFromUrl(wsData.thumbnailUrl)));
+            AddPopup(new PopupContext(content, await Utils.ImageUtils.LoadSpriteFromUrlAsync(wsData.thumbnailUrl)));
 
         }
         catch (Exception ex)

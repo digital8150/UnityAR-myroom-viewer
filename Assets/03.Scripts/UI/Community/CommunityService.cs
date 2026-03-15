@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -26,12 +26,12 @@ public class PostContent
     public int id;
     public int memberId;
     public string memberName;
-    public int? model3dId; // null Çã¿ë
+    public int? model3dId; // null í—ˆìš©
     public string model3dName;
     public string imageUrl;
     public string title;
     public string content;
-    public string category; // Enum Ã³¸® ±ÇÀå (QUESTION, REVIEW, FURNITURE µî)
+    public string category; // Enum ì²˜ë¦¬ ê¶Œìž¥ (QUESTION, REVIEW, FURNITURE ë“±)
     public string visibilityScope;
     public int viewCount;
     public int likeCount;
@@ -60,6 +60,31 @@ public class Sort
 
 public class CommunityService
 {
+    public static async Task<(long, string)> GetPostById(int postId)
+    {
+        long responseCode = 404;
+        using (var request = UnityEngine.Networking.UnityWebRequest.Get($"{Utils.Settings.BaseUrl}/api/posts/{postId}"))
+        {
+            request.SetRequestHeader("Authorization", $"Bearer {JWTToken.Token}");
+            request.SetRequestHeader("accept", "application/json");
+
+            var operation = request.SendWebRequest();
+
+            while(!operation.isDone) await Task.Yield();
+
+            responseCode = request.responseCode;
+
+            if(request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"Request Failed : {request.error} | Details: {request.downloadHandler.text}");
+                return (responseCode, string.Empty);
+            }
+
+            string body = request.downloadHandler.text;
+            return(responseCode, body);
+        }
+    }
+
     public static async Task<(long, string)> GetPostsPublic(int page, int size, string sort = "")
     {
         long responseCode = 404;

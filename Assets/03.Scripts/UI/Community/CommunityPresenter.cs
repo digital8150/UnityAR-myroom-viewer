@@ -1,11 +1,15 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using Utils;
 
 public class CommunityPresenter
 {
     private const int VIEW_PER_PAGE = 6;
     private CommunityView _view;
+    private PostView _postView;
     private int _pageIndex = 0;
 
     private bool _isLastPage = false;
@@ -15,10 +19,24 @@ public class CommunityPresenter
     private float _refreshDistance = 100f;
     private float _startOffset = 10f;
     private bool _refreshTriggered = false;
+    private bool _isShowingDetails = false;
 
-    public CommunityPresenter(CommunityView view)
+    public CommunityPresenter(CommunityView view, PostView postView)
     {
         _view = view;
+        _postView = postView;
+    }
+
+    public void OnReturnButtonClicked()
+    {
+        if (_isShowingDetails)
+        {
+            _isShowingDetails = false;
+            CloseDetail();
+            return;
+        }
+
+        SceneHistory.BackToPrevious();
     }
 
     public void OnScrollChanged(Vector2 pos)
@@ -136,10 +154,13 @@ public class CommunityPresenter
         }
     }
 
-    private string TranslateInfo(PostContent content)
+    private string TranslateInfo(PostContent content, bool isContainMeberName = true)
     {
-        //NOTE : 댓글 수 서버에서 응답 필요
-        return $"{content.memberName}•{GetRelativeTime(content.createdAt)}•조회 {content.viewCount}•댓글 0•좋아요 {content.likeCount}";
+        if (isContainMeberName)
+        {
+            return $"{content.memberName}•{GetRelativeTime(content.createdAt)}•조회 {content.viewCount}•댓글 0•좋아요 {content.likeCount}";
+        }
+        return $"{GetRelativeTime(content.createdAt)}•조회 {content.viewCount}•댓글 0•좋아요 {content.likeCount}";
     }
 
     private string GetRelativeTime(string isoDateTime)
@@ -181,9 +202,44 @@ public class CommunityPresenter
         return dateTime.ToString("yyyy-MM-dd");
     }
 
-    private void OpenDetail(int postId)
+    private async void OpenDetail(int postId)
     {
-        //TODO : 포스트 상세 페이지로 이동
-        Debug.Log($"포스트 상세 페이지로 이동: {postId}");
+        if (_isShowingDetails) return;
+        _isShowingDetails = true;
+
+        long responseCode;
+        string jsonBody;
+
+        (responseCode, jsonBody) = await CommunityService.GetPostById(postId);
+        if (responseCode == 200 && !string.IsNullOrEmpty(jsonBody))
+        {
+            try
+            {
+                List<Sprite> postImages = new List<Sprite>();
+                PostContent postContent = JsonConvert.DeserializeObject<PostContent>(jsonBody);
+                _postView.ResetPostView();
+                _postView.SetPostView(
+                        TranslateCategory(postContent.category),
+                        postContent.title,
+                        postContent.memberName,
+                        TranslateInfo(postContent, false),
+                        postContent.content
+                    );
+
+                _postView.AddContentImage(postContent.imageUrl);
+
+                _postView.ShowPostView();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[OpenDetail] Error while loading post detail : {ex}");
+            }
+        }
+    }
+
+    private void CloseDetail()
+    {
+        _isShowingDetails = false;
+        _postView.HidePostView();
     }
 }
