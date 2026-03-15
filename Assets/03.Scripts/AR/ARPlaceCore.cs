@@ -12,6 +12,7 @@ public class ARPlaceCore : MonoBehaviour
     [SerializeField] private ARRaycastManager _arRaycastManager;
     [SerializeField] private ARPlaneManager _arPlaneManager;
     [SerializeField] private float _rotationSensitivity = 0.5f;
+    [SerializeField] private float _heightSensitivity = 0.001f; // 높이 조절 감도
 
     public static string CurrentModelPath;
     public static ModelDimension CurrentModelDimension;
@@ -24,6 +25,9 @@ public class ARPlaceCore : MonoBehaviour
     private int _currentDelayFrames = 0;
     private float _initialMidpointX;
     private Quaternion _initialRotation;
+    private float _initialMidpointY;
+    private float _initialHeight;
+    private float _yOffsetFromPlane = 0f;
 
     void OnEnable() { EnhancedTouchSupport.Enable(); }
     void OnDisable() { EnhancedTouchSupport.Disable(); }
@@ -66,76 +70,99 @@ public class ARPlaceCore : MonoBehaviour
         int touchCount = ETouch.activeFingers.Count;
         if (touchCount == 0) return;
 
-        // --- [한 손가락: 위치 이동/생성 (최저점 바닥 찾기)] ---
+        // --- [1. 한 손가락: 위치 이동 (회전/높이 유지)] ---
         if (touchCount == 1)
         {
             Finger finger = ETouch.activeFingers[0];
-
             if (finger.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began ||
                 finger.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved)
             {
                 if (_arRaycastManager.Raycast(finger.currentTouch.screenPosition, _hits, TrackableType.PlaneWithinPolygon))
                 {
                     bool foundValidPlane = false;
-                    Pose lowestPose = new Pose();
+                    Vector3 lowestPosition = Vector3.zero;
 
-                    // 1. 부딪힌 모든 평면을 뒤져서 가장 Y값이 낮은 '찐 바닥' 찾기
                     foreach (var hit in _hits)
                     {
                         ARPlane hitPlane = _arPlaneManager.GetPlane(hit.trackableId);
-
                         if (hitPlane != null && hitPlane.alignment == PlaneAlignment.HorizontalUp)
                         {
-                            // 처음 찾은 평면이거나, 기존에 찾은 평면보다 더 낮으면 갱신
-                            if (!foundValidPlane || hit.pose.position.y < lowestPose.position.y)
+                            if (!foundValidPlane || hit.pose.position.y < lowestPosition.y)
                             {
-                                lowestPose = hit.pose;
+                                lowestPosition = hit.pose.position;
                                 foundValidPlane = true;
                             }
                         }
                     }
 
-                    // 2. 가장 낮은 바닥 평면을 찾았을 때만 생성 또는 이동 처리
                     if (foundValidPlane)
                     {
-                        if (finger.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began)
+                        if (finger.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began && _activeModel == null)
                         {
-                            if (_activeModel == null)
-                            {
-                                LoadModelAndPlace(lowestPose.position, lowestPose.rotation);
-                            }
+                            LoadModelAndPlace(lowestPosition, Quaternion.identity);
                         }
                         else if (finger.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved && _activeModel != null)
                         {
-                            _activeModel.transform.SetPositionAndRotation(lowestPose.position, lowestPose.rotation);
+                            // 평면의 Y값 + 사용자가 세 손가락으로 조절했던 오프셋
+                            float finalY = lowestPosition.y + _yOffsetFromPlane;
+                            _activeModel.transform.position = new Vector3(lowestPosition.x, finalY, lowestPosition.z);
                         }
                     }
                 }
             }
         }
-        // --- [두 손가락: 스와이프 기반 Y축 회전] ---
+        // --- [2. 두 손가락: Y축 회전] ---
         else if (touchCount == 2 && _activeModel != null)
         {
             Finger f1 = ETouch.activeFingers[0];
             Finger f2 = ETouch.activeFingers[1];
 
-            // 1. 두 손가락 중 하나라도 막 닿았을 때 (기준점 잡기)
             if (f1.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began ||
                 f2.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began)
             {
                 _initialMidpointX = (f1.screenPosition.x + f2.screenPosition.x) / 2f;
                 _initialRotation = _activeModel.transform.rotation;
             }
-            // 2. 움직일 때 (기준점으로부터의 거리만큼만 회전)
             else if (f1.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
                      f2.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved)
             {
                 float currentMidpointX = (f1.screenPosition.x + f2.screenPosition.x) / 2f;
                 float deltaX = currentMidpointX - _initialMidpointX;
+                _activeModel.transform.rotation = _initialRotation * Quaternion.Euler(0, -deltaX * _rotationSensitivity, 0);
+            }
+        }
+        // --- [3. 세 손가락: 높이(Y) 미세 조정] ---
+        else if (touchCount == 3 && _activeModel != null)
+        {
+            Finger f1 = ETouch.activeFingers[0];
+            Finger f2 = ETouch.activeFingers[1];
+            Finger f3 = ETouch.activeFingers[2];
 
-                // Rotate 대신 회전값을 직접 셋팅해서 "누적 현상" 방지
-                float angle = deltaX * _rotationSensitivity;
-                _activeModel.transform.rotation = _initialRotation * Quaternion.Euler(0, -angle, 0);
+            // 세 손가락 중 하나라도 막 닿았을 때 기준 높이 저장
+            if (f1.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began ||
+                f2.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began ||
+                f3.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began)
+            {
+                _initialMidpointY = (f1.screenPosition.y + f2.screenPosition.y + f3.screenPosition.y) / 3f;
+                _initialHeight = _activeModel.transform.position.y;
+            }
+            // 위아래로 움직일 때
+            else if (f1.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
+                     f2.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
+                     f3.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved)
+            {
+                float currentMidpointY = (f1.screenPosition.y + f2.screenPosition.y + f3.screenPosition.y) / 3f;
+                float deltaY = currentMidpointY - _initialMidpointY;
+
+                float newY = _initialHeight + (deltaY * _heightSensitivity);
+                _activeModel.transform.position = new Vector3(_activeModel.transform.position.x, newY, _activeModel.transform.position.z);
+
+                // [중요] 조절된 높이와 현재 감지된 평면 사이의 간격을 업데이트
+                // 이동 시 이 간격을 유지하기 위함입니다.
+                if (_arRaycastManager.Raycast(new Vector2(Screen.width / 2, Screen.height / 2), _hits, TrackableType.PlaneWithinPolygon))
+                {
+                    _yOffsetFromPlane = _activeModel.transform.position.y - _hits[0].pose.position.y;
+                }
             }
         }
     }
@@ -177,43 +204,62 @@ public class ARPlaceCore : MonoBehaviour
 
     private void ApplyRealScale(GameObject root)
     {
-        // 1. 모델 전체의 Renderer를 훑어서 현재 바운드(영역) 계산
-        Bounds combinedBounds = new Bounds();
         Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) return;
 
-        if (renderers.Length > 0)
+        // 1. 스케일 적용 전 원본 바운드 계산
+        Bounds combinedBounds = renderers[0].bounds;
+        foreach (var renderer in renderers)
         {
-            combinedBounds = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++)
-            {
-                combinedBounds.Encapsulate(renderers[i].bounds);
-            }
+            combinedBounds.Encapsulate(renderer.bounds);
         }
-        else return;
 
-        // 2. 스케일 계산 (가장 긴 축 기준)
-        // 입력값이 cm이므로 0.01을 곱해 미터(m) 단위로 변환
-        float targetMax = Mathf.Max(CurrentModelDimension.width,
-                                   CurrentModelDimension.height,
-                                   CurrentModelDimension.length) * 0.01f; // 여기서 변환! 📏
+        // 2. 피벗 보정: 모델의 바닥 중앙(bottomCenter)을 부모(root) 위치로 맞추기 위한 오프셋 계산
+        Vector3 bottomCenter = new Vector3(combinedBounds.center.x, combinedBounds.min.y, combinedBounds.center.z);
+        Vector3 offset = root.transform.position - bottomCenter;
 
-        float currentMax = Mathf.Max(combinedBounds.size.x, combinedBounds.size.y, combinedBounds.size.z);
-        float scaleFactor = (currentMax > 0) ? (targetMax / currentMax) : 1.0f;
-
-        // 3. 자식 오브젝트(실제 모델)들을 루프 돌며 위치와 스케일 수정
-        // root(parentObj)는 건드리지 않고, 내부 모델들만 조절해서 피벗 효과를 냄
+        // 자식들의 월드 위치를 이동시켜 피벗부터 찰떡같이 맞춤
         foreach (Transform child in root.transform)
         {
-            // 스케일 적용
-            child.localScale *= scaleFactor;
-
-            // 피벗 보정: 모델의 바닥(min.y)이 부모의 0 위치에 오도록 offset 계산
-            // 현재 로컬 좌표계에서 모델의 바닥이 얼마나 내려가 있는지 확인
-            float bottomY = combinedBounds.min.y;
-            float offset = root.transform.position.y - bottomY;
-
-            // 모델을 위로 올려서 바닥에 맞춤
-            child.position += new Vector3(0, offset, 0);
+            child.position += offset;
         }
+
+        // 3. 스케일 계산 및 적용 (바운드 크기는 이동해도 안 변하니까 그대로 씀)
+        float targetMaxMeter = Mathf.Max(CurrentModelDimension.width, CurrentModelDimension.height, CurrentModelDimension.length) * 0.01f;
+        float currentMax = Mathf.Max(combinedBounds.size.x, combinedBounds.size.y, combinedBounds.size.z);
+        float scaleFactor = (currentMax > 0) ? (targetMaxMeter / currentMax) : 1.0f;
+
+        root.transform.localScale = Vector3.one * scaleFactor;
+
+        // 4. 콜라이더 추가
+        BoxCollider box = root.AddComponent<BoxCollider>();
+        // 이미 모델 바닥이 root의 0,0,0에 있으므로, center Y는 사이즈의 절반만 올리면 됨!
+        box.center = new Vector3(0, combinedBounds.size.y / 2f, 0);
+        box.size = combinedBounds.size;
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (_activeModel == null) return;
+
+        // 1. 모델의 전체 바운드 시각화 (하늘색)
+        Renderer[] renderers = _activeModel.GetComponentsInChildren<Renderer>();
+        if (renderers.Length > 0)
+        {
+            Bounds combinedBounds = renderers[0].bounds;
+            foreach (var r in renderers) combinedBounds.Encapsulate(r.bounds);
+
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawWireCube(combinedBounds.center, combinedBounds.size);
+        }
+
+        // 2. 피벗 포인트(Root Position) 시각화 (빨간 구체)
+        // 이 구체가 모델의 정중앙 바닥에 위치해야 성공입니다.
+        Gizmos.color = Color.red;
+        Gizmos.DrawSphere(_activeModel.transform.position, 0.02f);
+
+        // 3. 정면 방향 표시 (파란 선)
+        Gizmos.color = Color.blue;
+        Gizmos.DrawRay(_activeModel.transform.position, _activeModel.transform.forward * 0.2f);
     }
 }
