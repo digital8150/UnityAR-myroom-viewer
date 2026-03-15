@@ -45,7 +45,7 @@ public class ARPlaceCore : MonoBehaviour
     private void Update()
     {
         HandleTouchInput();
-        DebugModelPosition();
+        //DebugModelPosition();
     }
 
     private void DebugModelPosition()
