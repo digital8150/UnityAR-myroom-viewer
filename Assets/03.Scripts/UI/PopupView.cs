@@ -124,6 +124,8 @@ public class PopupView : MonoBehaviour
         _closeMsgBtn?.onClick.RemoveAllListeners();
         _yesBtn?.onClick.RemoveAllListeners();
         _noBtn?.onClick.RemoveAllListeners();
+        WebsocketController.Instance.OnModel3DGenerated -= GenerationSuccess;
+        WebsocketController.Instance.OnModel3DGenerateFailed -= GenerationFailed;
     }
 
     public void ShowMessage(string msg)
@@ -152,6 +154,10 @@ public class PopupView : MonoBehaviour
         Debug.LogError("PopupView: CloseMessage - One or more UI components are not assigned in the inspector.");
     }
 
+    /// <summary>
+    /// 예 / 아니오에 의한 로직을 사용하려는 경우 PopupView.Instance.Presenter 통해서 호출할 것
+    /// </summary>
+    /// <param name="msg"></param>
     public void ShowYesNoMessage(string msg)
     {
         if (_backgroundBlockerPanel || _popupPanel || _yesNoPanel || _popupMsgYesNo)

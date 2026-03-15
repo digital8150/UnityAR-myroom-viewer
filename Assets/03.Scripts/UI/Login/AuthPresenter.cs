@@ -2,10 +2,10 @@
 
 public class AuthPresenter
 {
-    private readonly IAuthView _view;
+    private readonly AuthView _view;
     private readonly AuthService _service;
 
-    public AuthPresenter(IAuthView view, AuthService service)
+    public AuthPresenter(AuthView view, AuthService service)
     {
         _view = view;
         _service = service;

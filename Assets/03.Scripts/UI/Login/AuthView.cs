@@ -2,7 +2,7 @@
 using UnityEngine.UI;
 using TMPro;
 
-public class AuthView : MonoBehaviour, IAuthView
+public class AuthView : MonoBehaviour
 {
     [Header("Panels")]
     [SerializeField] private GameObject registerPanel;
