@@ -99,3 +99,16 @@ InitTestScene*.unity*
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
 .vscode/settings.json
 .gitignore
+/Assets/05.Resources/Font(TMP)/Pretendard-Bold SDF.asset
+/Assets/05.Resources/Font(TMP)/Pretendard-Bold SDF.asset.meta
+/Assets/05.Resources/Font(TMP)/Pretendard-Bold.ttf
+/Assets/05.Resources/Font(TMP)/Pretendard-Bold.ttf.meta
+/Assets/05.Resources/Font(TMP)/Pretendard-ExtraBold SDF.asset
+/Assets/05.Resources/Font(TMP)/Pretendard-ExtraBold SDF.asset.meta
+/Assets/05.Resources/Font(TMP)/Pretendard-ExtraBold.ttf
+/Assets/05.Resources/Font(TMP)/Pretendard-ExtraBold.ttf.meta
+/Assets/05.Resources/Font(TMP)/Pretendard-Medium SDF.asset
+/Assets/05.Resources/Font(TMP)/Pretendard-Regular SDF.asset
+/Assets/05.Resources/Font(TMP)/Pretendard-Regular SDF.asset.meta
+/Assets/05.Resources/Font(TMP)/Pretendard-Regular.ttf
+/Assets/05.Resources/Font(TMP)/Pretendard-Regular.ttf.meta
