@@ -39,7 +39,7 @@ public class WebsocketController : MonoBehaviour
         {
             _serverUri = $"ws://{Utils.Settings.Hostname}/ws/websocket";
         }
-        Application.targetFrameRate = -1; // 기기가 지원하는 최대 프레임으로 작동
+        Application.targetFrameRate = 120;
     }
 
     private async void OnDestroy() { await CleanupAsync(); }

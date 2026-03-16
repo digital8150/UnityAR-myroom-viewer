@@ -68,9 +68,7 @@ public class CommunityService
             request.SetRequestHeader("Authorization", $"Bearer {JWTToken.Token}");
             request.SetRequestHeader("accept", "application/json");
 
-            var operation = request.SendWebRequest();
-
-            while(!operation.isDone) await Task.Yield();
+            await request.SendWebRequest();
 
             responseCode = request.responseCode;
 
@@ -93,9 +91,7 @@ public class CommunityService
             request.SetRequestHeader("Authorization", $"Bearer {JWTToken.Token}");
             request.SetRequestHeader("accept", "application/json");
 
-            var operation = request.SendWebRequest();
-
-            while (!operation.isDone) await Task.Yield();
+            await request.SendWebRequest();
 
             responseCode = request.responseCode;
 

@@ -6153,9 +6153,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LightManager
   _arCameraManager: {fileID: 65284397}
   _directionalLight: {fileID: 1058820053}
-  _lightIntensityMult: 2
-  _lightIntensityMax: 2.8
-  _lightIntesityMin: 0.1
+  _lightIntensityMult: 2.5
+  _lightIntensityMax: 3.5
+  _lightIntesityMin: 0.0085
 --- !u!4 &1215742570
 Transform:
   m_ObjectHideFlags: 0
