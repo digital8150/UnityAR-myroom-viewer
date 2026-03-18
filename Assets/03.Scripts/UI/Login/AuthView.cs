@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.UI.ProceduralImage;
 
 public class AuthView : MonoBehaviour
 {
@@ -11,13 +12,22 @@ public class AuthView : MonoBehaviour
 
 
     [Header("Inputs")]
-    [SerializeField] private TMP_InputField regName, regEmail, regPass, regPassConfirm;
+    [SerializeField] private TMP_InputField regName;
+    [SerializeField] private TMP_InputField regEmail, regPass, regPassConfirm;
     [SerializeField] private TMP_InputField loginEmail, loginPass;
 
     [Header("Buttons")]
-    [SerializeField] private Button regBtn, loginBtn, toLoginBtn, toRegBtn;
+    [SerializeField] private Button regBtn;
+    [SerializeField] private Button loginBtn, toLoginBtn, toRegBtn;
 
-    [Header("Popup")]
+    [Header("Wrong Indicator")]
+    [SerializeField] private Color _defaultOutlineColor;
+    [SerializeField] private Color _wrongOutlineColor;
+    [SerializeField] private ProceduralImage _idFieldOutline;
+    [SerializeField] private ProceduralImage _pwFieldOutline;
+    [SerializeField] private GameObject _idWrongIndicator;
+    [SerializeField] private GameObject _pwWrongIndicator;
+
 
     public string UserName => regName.text;
     public string Email => loginPanel.activeSelf ? loginEmail.text : regEmail.text;
@@ -57,7 +67,8 @@ public class AuthView : MonoBehaviour
     }
 
     public void ShowLoginPanel()
-    { 
+    {
+        ResetWrongIndicator();
         registerPanel?.SetActive(false);
         loginPanel?.SetActive(true);
     }
@@ -66,4 +77,26 @@ public class AuthView : MonoBehaviour
         registerPanel?.SetActive(true);
         loginPanel?.SetActive(false);
     }
+
+    public void ShowIDWrongIndicator()
+    {
+        ResetWrongIndicator();
+        _idFieldOutline.color = _wrongOutlineColor;
+        _idWrongIndicator.SetActive(true);
+    }
+
+    public void ShowPWWrongIndicator()
+    {
+        ResetWrongIndicator();
+        _pwFieldOutline.color = _wrongOutlineColor;
+        _pwWrongIndicator.SetActive(true);
+    }
+
+    private void ResetWrongIndicator()
+    {
+        _idFieldOutline.color = _defaultOutlineColor;
+        _pwFieldOutline.color = _defaultOutlineColor;
+        _idWrongIndicator.SetActive(false);
+        _pwWrongIndicator.SetActive(false);
+    }    
 }
