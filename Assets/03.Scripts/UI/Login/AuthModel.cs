@@ -20,3 +20,9 @@ public class LoginResponse
 {
     public string token;
 }
+
+[Serializable]
+public class ExistsResponse
+{
+    public bool exists;
+}

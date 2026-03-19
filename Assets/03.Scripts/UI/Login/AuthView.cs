@@ -18,7 +18,7 @@ public class AuthView : MonoBehaviour
 
     [Header("Buttons")]
     [SerializeField] private Button regBtn;
-    [SerializeField] private Button loginBtn, toLoginBtn, toRegBtn;
+    [SerializeField] private Button loginBtn, toLoginBtn, toRegBtn, _emailCheckBtn;
 
     [Header("Wrong Indicator")]
     [SerializeField] private Color _defaultOutlineColor;
@@ -27,6 +27,14 @@ public class AuthView : MonoBehaviour
     [SerializeField] private ProceduralImage _pwFieldOutline;
     [SerializeField] private GameObject _idWrongIndicator;
     [SerializeField] private GameObject _pwWrongIndicator;
+
+    [Header("Register Wrong Text")]
+    [SerializeField] private Color _wrongTextColor;
+    [SerializeField] private Color _okayTextColor;
+    [SerializeField] private TextMeshProUGUI _registerIndicatorText;
+    [SerializeField] private string _emailExist;
+    [SerializeField] private string _pwcIncorrect;
+    [SerializeField] private string _emailOkay;
 
 
     public string UserName => regName.text;
@@ -44,6 +52,7 @@ public class AuthView : MonoBehaviour
         loginBtn?.onClick.AddListener(_presenter.OnLoginClicked);
         toLoginBtn?.onClick.AddListener(_presenter.OnToLoginClicked);
         toRegBtn?.onClick.AddListener(_presenter.OnToRegisterClicked);
+        if (_emailCheckBtn) _emailCheckBtn.onClick.AddListener(() => _presenter.OnEmailCheckClicked(regEmail.text));
     }
 
     void Start()
@@ -57,6 +66,7 @@ public class AuthView : MonoBehaviour
         loginBtn?.onClick.RemoveListener(_presenter.OnLoginClicked);
         toLoginBtn?.onClick.RemoveListener(_presenter.OnToLoginClicked);
         toRegBtn?.onClick.RemoveListener(_presenter.OnToRegisterClicked);
+        if (_emailCheckBtn) _emailCheckBtn.onClick.RemoveAllListeners();
     }
 
     //--- Public Methods ---//
@@ -74,6 +84,7 @@ public class AuthView : MonoBehaviour
     }
 
     public void ShowRegisterPanel() {
+        SetRegisterIndicatorTextEnabled(false);
         registerPanel?.SetActive(true);
         loginPanel?.SetActive(false);
     }
@@ -92,11 +103,55 @@ public class AuthView : MonoBehaviour
         _pwWrongIndicator.SetActive(true);
     }
 
+    public void SetRegisterIndicatorTextEnabled(bool enabled)
+    {
+        if (_registerIndicatorText) _registerIndicatorText.gameObject.SetActive(enabled);
+    }
+
+    public void ShowEmailExist()
+    {
+        SetRegisterIndicatorTextEnabled(true);
+        if (_registerIndicatorText)
+        {
+            _registerIndicatorText.text = _emailExist;
+            _registerIndicatorText.color = _wrongTextColor;
+        }
+    }
+
+    public void ShowPWCIncorrect()
+    {
+        SetRegisterIndicatorTextEnabled(true);
+        if (_registerIndicatorText)
+        {
+            _registerIndicatorText.text = _pwcIncorrect;
+            _registerIndicatorText.color = _wrongTextColor;
+        }
+    }
+
+    public void ShowEmailOkay()
+    {
+        SetRegisterIndicatorTextEnabled(true);
+        if (_registerIndicatorText) {
+            _registerIndicatorText.text = _emailOkay;
+            _registerIndicatorText.color = _okayTextColor;
+        }
+    }
+
+    public void ShowRegisterIndicator(string text, bool isOkay)
+    {
+        SetRegisterIndicatorTextEnabled(true);
+        if(_registerIndicatorText)
+        {
+            _registerIndicatorText.text = text;
+            _registerIndicatorText.color = isOkay? _okayTextColor : _wrongTextColor;
+        }
+    }
+
     private void ResetWrongIndicator()
     {
         _idFieldOutline.color = _defaultOutlineColor;
         _pwFieldOutline.color = _defaultOutlineColor;
         _idWrongIndicator.SetActive(false);
         _pwWrongIndicator.SetActive(false);
-    }    
+    }
 }

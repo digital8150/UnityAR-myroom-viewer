@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿using Newtonsoft.Json;
+using UnityEngine;
+using System.Threading.Tasks;
+using System;
 
 public class AuthPresenter
 {
@@ -31,7 +34,14 @@ public class AuthPresenter
         }
         else
         {
-            PopupView.Instance.ShowMessage($"아이디와 비밀번호를 확인하세요");
+            if(await isEmailExists(_view.Email))
+            {
+                _view.ShowPWWrongIndicator();
+            }
+            else
+            {
+                _view.ShowIDWrongIndicator();
+            }
             Debug.Log($"로그인 실패! 상태 코드: {code}");
         }
     }
@@ -40,7 +50,7 @@ public class AuthPresenter
     {
         if (_view.Password != _view.PasswordConfirm)
         {
-            PopupView.Instance.ShowMessage("비밀번호 확인이 일치하지 않습니다.");
+            _view.ShowPWCIncorrect();
             return;
         }
 
@@ -56,11 +66,24 @@ public class AuthPresenter
         _view.SetLoading(false);
 
         if (code == 200) _view.ShowLoginPanel();
-        else if (code == 409) PopupView.Instance.ShowMessage("이미 존재하는 이메일입니다.");
+        else if (await isEmailExists(regData.email)) _view.ShowEmailExist();
+        else if (code == 400) _view.ShowRegisterIndicator("입력하신 내용을 확인해주세요.", false);
         else
         {
-            PopupView.Instance.ShowMessage($"잘못된 요청입니다.");
+            PopupView.Instance.ShowMessage($"서버와 연결할 수 없습니다. 네트워크 상태를 확인해주세요.");
             Debug.Log($"회원가입 실패! 상태 코드: {code}");
+        }
+    }
+
+    public async void OnEmailCheckClicked(string email)
+    {
+        if(await isEmailExists(email))
+        {
+            _view.ShowEmailExist();
+        }
+        else
+        {
+            _view.ShowEmailOkay();
         }
     }
 
@@ -72,5 +95,27 @@ public class AuthPresenter
     public void OnToRegisterClicked()
     {
         _view.ShowRegisterPanel();
+    }
+
+    private async Task<bool> isEmailExists(string email)
+    {
+        try
+        {
+            long responseCode;
+            string jsonBody;
+            (responseCode, jsonBody) = await _service.GetExists(email);
+
+            ExistsResponse response = JsonConvert.DeserializeObject<ExistsResponse>(jsonBody);
+
+            if (responseCode == 200 && response.exists)
+            {
+                return true;
+            }
+        }
+        catch(Exception ex)
+        {
+            Debug.LogException(ex);
+        }
+        return false;
     }
 }

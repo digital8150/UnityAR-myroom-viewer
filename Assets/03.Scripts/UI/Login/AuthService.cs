@@ -30,6 +30,26 @@ public class AuthService
         }
     }
 
+    public async Task<(long, string)> GetExists(string email)
+    {
+        long responseCode = 404;
+        using(var request = UnityWebRequest.Get($"{Utils.Settings.BaseUrl}/api/auth/exists?email={email}"))
+        {
+            request.SetRequestHeader("accept", "application/json");
+
+            await request.SendWebRequest();
+            responseCode = request.responseCode;
+
+            if(request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"Request Failed: {request.error} | Details: {request.downloadHandler.text}");
+                return (responseCode, string.Empty);
+            }
+
+            return (responseCode, request.downloadHandler.text);
+        }
+    }
+
     private async Task<UnityWebRequest> SendPost(string url, string json)
     {
         var request = new UnityWebRequest(url, "POST");
@@ -41,8 +61,8 @@ public class AuthService
         request.SetRequestHeader("Content-Type", "application/json");
         request.SetRequestHeader("accept", "*/*");
 
-        var operation = request.SendWebRequest();
-        while (!operation.isDone) await Task.Yield();
+        await request.SendWebRequest();
+        
         return request;
     }
 }
