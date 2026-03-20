@@ -2,10 +2,26 @@
 using UnityEngine.Networking;
 using System.Threading.Tasks;
 using System.Text;
+using Newtonsoft.Json;
 
-public class AuthService
+public static class AuthService
 {
-    public async Task<long> Register(RegisterRequest data)
+    public static async Task<(long code, string body)> PostRefrsh(RefreshRequest data)
+    {
+        long responseCode = 404;
+        string json = JsonConvert.SerializeObject(data);
+        using (var request = await SendPost($"{Utils.Settings.BaseUrl}/api/auth/refresh", json))
+        {
+            responseCode = request.responseCode;
+            if(responseCode == 200)
+            {
+                return (responseCode, request.downloadHandler.text);
+            }
+            return(responseCode, string.Empty);
+        }
+    }
+
+    public static async Task<long> Register(RegisterRequest data)
     {
         string json = JsonUtility.ToJson(data);
         using(var request = await SendPost($"{Utils.Settings.BaseUrl}/api/auth/register", json))
@@ -14,7 +30,7 @@ public class AuthService
         }
     }
 
-    public async Task<(long code, string token)> Login(LoginRequest data)
+    public static async Task<(long code, string jsonBody)> Login(LoginRequest data)
     {
         string json = JsonUtility.ToJson(data);
 
@@ -23,14 +39,13 @@ public class AuthService
             if (request.responseCode == 200)
             {
                 var responseJson = request.downloadHandler.text;
-                var loginResponse = JsonUtility.FromJson<LoginResponse>(responseJson);
-                return (request.responseCode, loginResponse.token);
+                return (request.responseCode, responseJson);
             }
             return (request.responseCode, null);
         }
     }
 
-    public async Task<(long, string)> GetExists(string email)
+    public static async Task<(long, string)> GetExists(string email)
     {
         long responseCode = 404;
         using(var request = UnityWebRequest.Get($"{Utils.Settings.BaseUrl}/api/auth/exists?email={email}"))
@@ -50,7 +65,7 @@ public class AuthService
         }
     }
 
-    private async Task<UnityWebRequest> SendPost(string url, string json)
+    private static async Task<UnityWebRequest> SendPost(string url, string json)
     {
         var request = new UnityWebRequest(url, "POST");
 

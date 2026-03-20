@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+ï»¿using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -12,11 +12,9 @@ public class LoginEverywhere : MonoBehaviour
     [SerializeField] private string debugPassword = "password123";
     [SerializeField] private bool autoLoginInEditor = true;
 
-    private AuthService _authService;
-
     private void Awake()
     {
-        // ½Ì±ÛÅæ Ã³¸®
+        // ì‹±ê¸€í†¤ ì²˜ë¦¬
         if (_instance != null)
         {
             Destroy(gameObject);
@@ -24,8 +22,6 @@ public class LoginEverywhere : MonoBehaviour
         }
         _instance = this;
         DontDestroyOnLoad(gameObject);
-
-        _authService = new AuthService();
 
 
         if (autoLoginInEditor)
@@ -41,30 +37,30 @@ public class LoginEverywhere : MonoBehaviour
     {
         if (!string.IsNullOrEmpty(JWTToken.Token)) return;
 
-        Debug.Log("<color=yellow>[Debug] ¿¡µğÅÍ ÀÚµ¿ ·Î±×ÀÎ ½Ãµµ Áß...</color>");
+        Debug.Log("<color=yellow>[Debug] ì—ë””í„° ìë™ ë¡œê·¸ì¸ ì‹œë„ ì¤‘...</color>");
 
         var loginData = new LoginRequest { email = debugEmail, password = debugPassword };
-        var (code, token) = await _authService.Login(loginData);
+        var (code, token) = await AuthService.Login(loginData);
 
         if (code == 200)
         {
             JWTToken.Token = token;
 
-            // À¥¼ÒÄÏ ¿¬°á±îÁö ±â´Ù¸²
+            // ì›¹ì†Œì¼“ ì—°ê²°ê¹Œì§€ ê¸°ë‹¤ë¦¼
             if (WebsocketController.Instance != null)
             {
                 await WebsocketController.Instance.ConnectToServer();
-                Debug.Log("<color=cyan>[Debug] À¥¼ÒÄÏ ¿¬°á ¿Ï·á. ¾ÀÀ» ¸®ÇÁ·¹½¬ÇÕ´Ï´Ù.</color>");
+                Debug.Log("<color=cyan>[Debug] ì›¹ì†Œì¼“ ì—°ê²° ì™„ë£Œ. ì”¬ì„ ë¦¬í”„ë ˆì‰¬í•©ë‹ˆë‹¤.</color>");
             }
 
-            // --- ¾À ¸®ÇÁ·¹½¬ ·ÎÁ÷ ---
-            // ÇöÀç È°¼ºÈ­µÈ ¾ÀÀÇ ºôµå ÀÎµ¦½º¸¦ °¡Á®¿Í¼­ ´Ù½Ã ·ÎµåÇØ
+            // --- ì”¬ ë¦¬í”„ë ˆì‰¬ ë¡œì§ ---
+            // í˜„ì¬ í™œì„±í™”ëœ ì”¬ì˜ ë¹Œë“œ ì¸ë±ìŠ¤ë¥¼ ê°€ì ¸ì™€ì„œ ë‹¤ì‹œ ë¡œë“œí•´
             Scene currentScene = SceneManager.GetActiveScene();
             SceneManager.LoadScene(currentScene.buildIndex);
         }
         else
         {
-            Debug.LogError($"[Debug] ·Î±×ÀÎ ½ÇÆĞ! »óÅÂ ÄÚµå: {code}");
+            Debug.LogError($"[Debug] ë¡œê·¸ì¸ ì‹¤íŒ¨! ìƒíƒœ ì½”ë“œ: {code}");
         }
     }
 #endif
