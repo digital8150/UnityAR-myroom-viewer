@@ -21,6 +21,13 @@ public class ARPlaceCore : MonoBehaviour
     [Header("Dimension UI")]
     [SerializeField] private bool _showDimensions = true;
     [SerializeField] private GameObject _dimensionTextPrefab; // TMP_Text 프리팹 (World Space)
+    [SerializeField] private LineRenderer _widthLine;
+    [SerializeField] private LineRenderer _lengthLine;
+    [SerializeField] private LineRenderer _heightLine;
+
+    [Header("New Gesture Settings")]
+    [SerializeField] private float _rotationDeadzone = 10f; // 회전 시작을 위한 최소 중심점 이동거리 (픽셀)
+    [SerializeField] private float _pinchDeadzone = 20f;     // 스케일 변경을 위한 최소 거리 변화 (픽셀)
 
     private const float DimensionValidThreshold = 0.05f;
 
@@ -60,6 +67,7 @@ public class ARPlaceCore : MonoBehaviour
         if (!IsModelDimensionValid())
         {
             _allowModelScaling = true;
+            CurrentModelDimension = new ModelDimension(50, 50, 50);
         }
     }
 
@@ -71,9 +79,17 @@ public class ARPlaceCore : MonoBehaviour
         {
             UpdateDimensionPositions();
         }
-        else if (_uiContainer != null && _uiContainer.activeSelf != _showDimensions)
+        
+        if (_uiContainer != null && _uiContainer.activeSelf != _showDimensions)
         {
             _uiContainer.SetActive(_showDimensions);
+        }
+
+        if (_widthLine && _heightLine && _lengthLine)
+        {
+            _widthLine.gameObject.SetActive(_showDimensions);
+            _heightLine.gameObject.SetActive(_showDimensions);
+            _lengthLine.gameObject.SetActive(_showDimensions);
         }
     }
 
@@ -157,35 +173,49 @@ public class ARPlaceCore : MonoBehaviour
             _initialDistance = currentDistance;
             _initialRotation = _activeModel.transform.rotation;
             _initialScale = _activeModel.transform.localScale;
-            _gestureMode = 0;
+
+            // _gestureMode 관련 로직 삭제
         }
         else if (f1.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
                  f2.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved)
         {
-            if (_gestureMode == 0)
-            {
-                float deltaDist = Mathf.Abs(currentDistance - _initialDistance);
-                float deltaMidX = Mathf.Abs(currentMidpointX - _initialMidpointX);
+            // --- 1. 독립적인 Y축 회전 로직 ---
+            float deltaMidX = currentMidpointX - _initialMidpointX;
 
-                if (deltaDist > _gestureThreshold) _gestureMode = 2;
-                else if (deltaMidX > _gestureThreshold * 0.75f) _gestureMode = 1;
+            // 회전 데드존 체크: 중심점의 누적 이동거리가 데드존보다 클 때만 회전 적용
+            if (Mathf.Abs(deltaMidX) > _rotationDeadzone)
+            {
+                // 데드존만큼을 뺀 값으로 회전 계산 (갑작스런 튀는 현상 방지)
+                float effectiveDeltaX = deltaMidX - (Mathf.Sign(deltaMidX) * _rotationDeadzone);
+                _activeModel.transform.rotation = _initialRotation * Quaternion.Euler(0, -effectiveDeltaX * _rotationSensitivity, 0);
             }
 
-            if (_gestureMode == 1)
+            // --- 2. 독립적인 스케일링 로직 ---
+            if (_allowModelScaling)
             {
-                float deltaX = currentMidpointX - _initialMidpointX;
-                _activeModel.transform.rotation = _initialRotation * Quaternion.Euler(0, -deltaX * _rotationSensitivity, 0);
-            }
-            else if (_gestureMode == 2 && _allowModelScaling)
-            {
-                float scaleFactor = currentDistance / _initialDistance;
-                Vector3 newScale = _initialScale * scaleFactor;
-                float minS = 0.1f, maxS = 5.0f;
-                _activeModel.transform.localScale = new Vector3(
-                    Mathf.Clamp(newScale.x, minS, maxS),
-                    Mathf.Clamp(newScale.y, minS, maxS),
-                    Mathf.Clamp(newScale.z, minS, maxS)
-                );
+                float deltaDist = currentDistance - _initialDistance;
+
+                if (Mathf.Abs(deltaDist) > _pinchDeadzone)
+                {
+                    float effectiveDeltaDist = deltaDist - (Mathf.Sign(deltaDist) * _pinchDeadzone);
+
+                    if (_initialDistance > 0)
+                    {
+                        float scaleFactor = (_initialDistance + effectiveDeltaDist) / _initialDistance;
+                        Vector3 newScale = _initialScale * scaleFactor;
+
+                        // 최소/최대 제한값
+                        float minS = 0.1f;
+                        float maxS = 5.0f;
+
+                        // Vector3는 직접 Clamp가 안 되므로 Mathf.Clamp로 각각 조절!
+                        _activeModel.transform.localScale = new Vector3(
+                            Mathf.Clamp(newScale.x, minS, maxS),
+                            Mathf.Clamp(newScale.y, minS, maxS),
+                            Mathf.Clamp(newScale.z, minS, maxS)
+                        );
+                    }
+                }
             }
         }
     }
@@ -286,6 +316,10 @@ public class ARPlaceCore : MonoBehaviour
         _uiContainer = new GameObject("Dimension_UI_Container");
         _uiContainer.transform.SetParent(_activeModel.transform);
 
+        // 🚨 핵심: UI 렌더링을 위한 Canvas 세팅 추가!
+        Canvas canvas = _uiContainer.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+
         _widthText = CreateText("Width_Text");
         _heightText = CreateText("Height_Text");
         _lengthText = CreateText("Length_Text");
@@ -303,20 +337,64 @@ public class ARPlaceCore : MonoBehaviour
         BoxCollider box = _activeModel.GetComponent<BoxCollider>();
         if (box == null || _widthText == null) return;
 
-        Vector3 worldSize = Vector3.Scale(box.size, _activeModel.transform.localScale);
-        Vector3 center = _activeModel.transform.TransformPoint(box.center);
+        // 가구의 실제 월드 스케일이 적용된 사이즈
+        Vector3 size = Vector3.Scale(box.size, _activeModel.transform.localScale);
+        Vector3 center = _activeModel.transform.position; // 가구의 바닥 중심
+        Transform modelTransform = _activeModel.transform;
 
-        // 텍스트 위치 잡기 (바닥에서 살짝 위)
-        _widthText.text = $"W: {(worldSize.x * 100f):F1}cm";
-        _widthText.transform.position = center + _activeModel.transform.forward * (worldSize.z / 2f) + Vector3.up * 0.02f;
+        // 텍스트를 선에서 띄울 간격 & 선을 모델에서 살짝 띄울 간격
+        float textMargin = 0.1f;
+        float lineOffset = 0.02f;
 
-        _heightText.text = $"H: {(worldSize.y * 100f):F1}cm";
-        _heightText.transform.position = center + _activeModel.transform.right * (worldSize.x / 2f) + _activeModel.transform.forward * (worldSize.z / 2f);
+        // 기준이 되는 절반 크기 벡터
+        Vector3 halfRight = modelTransform.right * (size.x / 2f);
+        Vector3 halfForward = modelTransform.forward * (size.z / 2f);
+        Vector3 upFull = modelTransform.up * size.y;
 
-        _lengthText.text = $"L: {(worldSize.z * 100f):F1}cm";
-        _lengthText.transform.position = center + _activeModel.transform.right * (worldSize.x / 2f) + Vector3.up * 0.02f;
+        // --- 1. 가로 (Width): 정면 바닥 ---
+        // 왼쪽 밑에서 오른쪽 밑으로 선 긋기
+        Vector3 widthStart = center - halfRight + halfForward + (modelTransform.forward * lineOffset);
+        Vector3 widthEnd = center + halfRight + halfForward + (modelTransform.forward * lineOffset);
 
-        // 빌보드 (카메라 바라보기)
+        if (_widthLine != null)
+        {
+            _widthLine.SetPosition(0, widthStart);
+            _widthLine.SetPosition(1, widthEnd);
+        }
+
+        // 텍스트는 선의 중앙에 배치
+        _widthText.text = $"{(size.x * 100f):F0} cm";
+        _widthText.transform.position = Vector3.Lerp(widthStart, widthEnd, 0.5f) + (modelTransform.forward * textMargin);
+
+        // --- 2. 세로 (Depth): 우측 바닥 ---
+        // 앞쪽 밑에서 뒤쪽 밑으로 선 긋기
+        Vector3 depthStart = center + halfRight + halfForward + (modelTransform.right * lineOffset);
+        Vector3 depthEnd = center + halfRight - halfForward + (modelTransform.right * lineOffset);
+
+        if (_lengthLine != null)
+        {
+            _lengthLine.SetPosition(0, depthStart);
+            _lengthLine.SetPosition(1, depthEnd);
+        }
+
+        _lengthText.text = $"{(size.z * 100f):F0} cm";
+        _lengthText.transform.position = Vector3.Lerp(depthStart, depthEnd, 0.5f) + (modelTransform.right * textMargin);
+
+        // --- 3. 높이 (Height): 좌측 앞 모서리 ---
+        // 왼쪽 앞 바닥에서 위로 선 긋기
+        Vector3 heightStart = center - halfRight + halfForward - (modelTransform.right * lineOffset);
+        Vector3 heightEnd = heightStart + upFull;
+
+        if (_heightLine != null)
+        {
+            _heightLine.SetPosition(0, heightStart);
+            _heightLine.SetPosition(1, heightEnd);
+        }
+
+        _heightText.text = $"{(size.y * 100f):F0} cm";
+        _heightText.transform.position = Vector3.Lerp(heightStart, heightEnd, 0.5f) - (modelTransform.right * textMargin);
+
+        // --- 빌보드 & 회전 고정 ---
         Quaternion camRot = Camera.main.transform.rotation;
         _widthText.transform.rotation = camRot;
         _heightText.transform.rotation = camRot;
