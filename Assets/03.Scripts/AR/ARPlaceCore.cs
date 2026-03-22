@@ -6,6 +6,7 @@ using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 using UnityEngine.InputSystem.EnhancedTouch;
 using ETouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
+using UnityEngine.Rendering;
 
 public class ARPlaceCore : MonoBehaviour
 {
@@ -13,6 +14,8 @@ public class ARPlaceCore : MonoBehaviour
     [SerializeField] private ARPlaneManager _arPlaneManager;
     [SerializeField] private float _rotationSensitivity = 0.5f;
     [SerializeField] private float _heightSensitivity = 0.001f; // 높이 조절 감도
+
+    private const float DimensionValidThreshold = 0.05f;
 
     public static string CurrentModelPath;
     public static ModelDimension CurrentModelDimension;
@@ -28,6 +31,11 @@ public class ARPlaceCore : MonoBehaviour
     private float _initialMidpointY;
     private float _initialHeight;
     private float _yOffsetFromPlane = 0f;
+    private bool _allowModelScaling = false;
+
+    private int _gestureMode = 0; // 0: None, 1: Rotate, 2: Scale
+    private float _initialDistance;
+    private Vector3 _initialScale;
 
     void OnEnable() { EnhancedTouchSupport.Enable(); }
     void OnDisable() { EnhancedTouchSupport.Disable(); }
@@ -39,7 +47,7 @@ public class ARPlaceCore : MonoBehaviour
 
     private void Start()
     {
-
+        if(!IsModelDimensionValid()) _allowModelScaling=true;
     }
 
     private void Update()
@@ -111,24 +119,60 @@ public class ARPlaceCore : MonoBehaviour
                 }
             }
         }
-        // --- [2. 두 손가락: Y축 회전] ---
+        // --- [2. 두 손가락: Y축 회전 또는 스케일링 (분리 모드)] ---
         else if (touchCount == 2 && _activeModel != null)
         {
             Finger f1 = ETouch.activeFingers[0];
             Finger f2 = ETouch.activeFingers[1];
 
+            float currentDistance = Vector2.Distance(f1.screenPosition, f2.screenPosition);
+            float currentMidpointX = (f1.screenPosition.x + f2.screenPosition.x) / 2f;
+
             if (f1.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began ||
                 f2.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began)
             {
-                _initialMidpointX = (f1.screenPosition.x + f2.screenPosition.x) / 2f;
+                _initialMidpointX = currentMidpointX;
+                _initialDistance = currentDistance;
                 _initialRotation = _activeModel.transform.rotation;
+                _initialScale = _activeModel.transform.localScale;
+
+                // 터치 시작 시 모드 초기화 (0: 미정, 1: 회전, 2: 스케일)
+                _gestureMode = 0;
             }
             else if (f1.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
                      f2.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved)
             {
-                float currentMidpointX = (f1.screenPosition.x + f2.screenPosition.x) / 2f;
-                float deltaX = currentMidpointX - _initialMidpointX;
-                _activeModel.transform.rotation = _initialRotation * Quaternion.Euler(0, -deltaX * _rotationSensitivity, 0);
+                // 아직 모드가 결정되지 않았다면 임계값(Threshold)을 통해 결정
+                if (_gestureMode == 0)
+                {
+                    float deltaDist = Mathf.Abs(currentDistance - _initialDistance);
+                    float deltaMidX = Mathf.Abs(currentMidpointX - _initialMidpointX);
+
+                    // 거리 변화가 크면 스케일링, 중심점 이동이 크면 회전으로 판정
+                    // 10f~20f 정도가 적당한데, 형 앱 감도에 맞춰서 조절해!
+                    if (deltaDist > 20f) _gestureMode = 2;
+                    else if (deltaMidX > 15f) _gestureMode = 1;
+                }
+
+                // 결정된 모드에 따라 동작 실행
+                if (_gestureMode == 1) // 회전 모드
+                {
+                    float deltaX = currentMidpointX - _initialMidpointX;
+                    _activeModel.transform.rotation = _initialRotation * Quaternion.Euler(0, -deltaX * _rotationSensitivity, 0);
+                }
+                else if (_gestureMode == 2 && _allowModelScaling) // 스케일 모드
+                {
+                    float scaleFactor = currentDistance / _initialDistance;
+                    Vector3 newScale = _initialScale * scaleFactor;
+
+                    // Clamp로 최소/최대 크기 제한
+                    float minS = 0.1f, maxS = 5.0f;
+                    newScale.x = Mathf.Clamp(newScale.x, minS, maxS);
+                    newScale.y = Mathf.Clamp(newScale.y, minS, maxS);
+                    newScale.z = Mathf.Clamp(newScale.z, minS, maxS);
+
+                    _activeModel.transform.localScale = newScale;
+                }
             }
         }
         // --- [3. 세 손가락: 높이(Y) 미세 조정] ---
@@ -261,5 +305,12 @@ public class ARPlaceCore : MonoBehaviour
         // 3. 정면 방향 표시 (파란 선)
         Gizmos.color = Color.blue;
         Gizmos.DrawRay(_activeModel.transform.position, _activeModel.transform.forward * 0.2f);
+    }
+
+    private bool IsModelDimensionValid()
+    {
+        if (CurrentModelDimension == null) return false;
+        if (Mathf.Max(CurrentModelDimension.width, CurrentModelDimension.height, CurrentModelDimension.length) <= DimensionValidThreshold) return false;
+        return true;
     }
 }
