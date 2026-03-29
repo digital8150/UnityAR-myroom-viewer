@@ -55,12 +55,12 @@ public class ProjectInspectService
         }
     }
 
-    public static async Task<(long, string)> PutModel3DV2(int modelId, ModelUpdateData updateData)
+    public static async Task<(long, string)> PutModel3DV3(int modelId, ModelUpdateData updateData)
     {
         long responseCode = 404;
         string jsonPayload = JsonConvert.SerializeObject(updateData);
         byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonPayload);
-        using (var request = UnityWebRequest.Put($"{Utils.Settings.BaseUrl}/api/model3ds/v2/{modelId}", bodyRaw))
+        using (var request = UnityWebRequest.Put($"{Utils.Settings.BaseUrl}/api/model3ds/v3/{modelId}", bodyRaw))
         {
             request.SetRequestHeader("Authorization", $"Bearer {JWTToken.Token}");
             request.SetRequestHeader("accept", "application/json");

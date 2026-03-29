@@ -25,6 +25,9 @@ public class ModelData
     public int id;
     public string name;
     public string createdAt;
+    /// <summary>
+    /// glb 파일 링크
+    /// </summary>
     public string link;
     public int creatorId;
     public bool is_shared;
@@ -34,6 +37,10 @@ public class ModelData
     public string status;
     public string errorMessage;
     public string shopPageLink;
+    /// <summary>
+    /// 가구 종류 (예: table, chair, sofa 등)
+    /// </summary>
+    public string furniture_type;
 }
 
 //모델 저장 DTO
@@ -42,8 +49,8 @@ public class ModelUpdateData
     public string name;
     public bool is_shared;
     public string description;
-    public string link;
-    public string shopPageLink;
+    public string furniture_type;
+    public string shop_page_link;
 }
 
 [Serializable]

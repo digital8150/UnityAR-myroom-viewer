@@ -7,15 +7,6 @@ using UnityEngine.UI;
 using UnityEngine.UI.ProceduralImage;
 using Utils;
 
-[Serializable]
-public class CommentContext
-{
-    public string userName;
-    public Sprite profilePicture;
-    public string comment;
-    public string commentInfo;
-}
-
 public class PostView : MonoBehaviour
 {
     [Header("Prefabs")]
@@ -24,6 +15,7 @@ public class PostView : MonoBehaviour
 
     [Header("Components")]
     [SerializeField] private RectTransform _postDetailPanel;
+    [SerializeField] private ScrollRect _postDetailScrollViewContent;
     [SerializeField] private TextMeshProUGUI _badgeText;
     [SerializeField] private TextMeshProUGUI _titleText;
     [SerializeField] private ProceduralImage _profilePicture;
@@ -40,6 +32,7 @@ public class PostView : MonoBehaviour
     [SerializeField] private float _hiddenLeftOffset = 500f;  // 숨겼을 때 Left 값
     [SerializeField] private float _hiddenRightOffset = -500f; // 숨겼을 때 Right 값
     [SerializeField] private float _duration;
+    [SerializeField] private Sprite _defaultProfilePic;
 
     private Coroutine _activeCoroutine;
 
@@ -55,13 +48,17 @@ public class PostView : MonoBehaviour
     /// <param name="content"></param>
     /// <param name="commentsCount"></param>
     /// <param name="comments"></param>
-    public void SetPostView(string category, string title, string userName, string info, string content, int commentsCount = 0, List<CommentContext> comments = null)
+    public void SetPostView(string category, string title, string userName, string info, string content, int commentsCount = 0, string userProfilePic = null)
     {
         if(_badgeText) _badgeText.text = category;
         if(_titleText) _titleText.text = title;
         if(_userNameText) _userNameText.text = userName;
         if(_infoText) _infoText.text = info;
         if(_contentText) _contentText.text = content;
+        if (_commentsTitleText) _commentsTitleText.text = $"댓글 {commentsCount}";
+
+        if (userProfilePic != null && _profilePicture) SetProfilePicture(userProfilePic);
+        else _profilePicture.sprite = _defaultProfilePic;
     }
 
     public void ResetPostView()
@@ -75,6 +72,8 @@ public class PostView : MonoBehaviour
         {
             GameObject.Destroy(child.gameObject);
         }
+
+        _postDetailScrollViewContent.verticalNormalizedPosition = 1f;
     }
 
     public async void SetProfilePicture(string imageUrl)
@@ -93,7 +92,12 @@ public class PostView : MonoBehaviour
             var clone = Instantiate(_imageViewPrefab, _imagesParent.transform);
             clone.UpdateImage(contentImage);
         }
+    }
 
+    public void AddComment(CommentDto commentDto)
+    {
+        var clone = Instantiate(_commentViewPrefab, _commentsParent.transform);
+        clone.Presenter.SetComment(commentDto);
     }
 
     /// <summary>

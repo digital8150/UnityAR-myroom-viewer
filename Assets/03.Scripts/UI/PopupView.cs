@@ -47,6 +47,8 @@ public class PopupView : MonoBehaviour
     [SerializeField] private GameObject _popupPanel;
     [SerializeField] private GameObject _okPanel;
     [SerializeField] private GameObject _yesNoPanel;
+    [SerializeField] private GameObject _loadingPanel;
+    [SerializeField] private GameObject _loadingSpinner;
 
     [Header("Texts")]
     [SerializeField] private TMP_Text _popupMsg;
@@ -78,6 +80,9 @@ public class PopupView : MonoBehaviour
     [Header("Notification Common Icons")]
     public Sprite GreenCheckCircle;
 
+    [Header("Loading Spinner Settings")]
+    [SerializeField] private float _spinnerRotationSpeed = 360f; // 초당 회전 속도
+
     private static bool _isShowingPopup = false;
 
     private PopupPresenter _presenter;
@@ -105,6 +110,7 @@ public class PopupView : MonoBehaviour
     private void Start()
     {
         CloseMessage();
+        SetLoadingPannelActive(false);
         ShowPopupAt(100, new PopupContext());
         WebsocketController.Instance.OnModel3DGenerated += GenerationSuccess;
         WebsocketController.Instance.OnModel3DGenerateFailed += GenerationFailed;
@@ -117,6 +123,8 @@ public class PopupView : MonoBehaviour
         {
             StartCoroutine(ShowPopupRoutine());
         }
+
+        _loadingSpinner.transform.Rotate(0, 0, _spinnerRotationSpeed * Time.deltaTime); // 초당 360도 회전
     }
 
     private void OnDestroy()
@@ -199,6 +207,14 @@ public class PopupView : MonoBehaviour
     {
         var context = new PopupContext(content, icon, backgroundColor);
         AddPopup(context);
+    }
+
+    public void SetLoadingPannelActive(bool active)
+    {
+        if(_loadingPanel)
+        {
+            _loadingPanel.SetActive(active);
+        }
     }
 
     private IEnumerator MovePopup(float start, float end, float animDuration)

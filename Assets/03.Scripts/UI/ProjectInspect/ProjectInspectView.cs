@@ -1,19 +1,38 @@
-﻿using TMPro;
+﻿using GLTFast;
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI.ProceduralImage;
 using UnityEngine.UI;
+using System;
+using System.Collections.Generic;
+using UnityEngine.UI.ProceduralImage;
+
+[Serializable]
+public class CategoryButton
+{
+    public Button button;
+    public string categoryName;
+    public ProceduralImage bgImage;
+}
 
 public class ProjectInspectView : MonoBehaviour
 {
     [Header("General")]
     [SerializeField] private Button _returnBtn;
 
+    [Header("Showcase Settings")]
+    [SerializeField] private float _targetMaxScale = 1.4f;      // 가장 긴 축의 목표 크기
+    [SerializeField] private bool _enableAutoRotation = true;  // 자동 회전 여부
+    [SerializeField] private float _rotationSpeed = 30f;       // 회전 속도
+
+    [Header("Settings")]
+    [SerializeField] private Color _selectedCategoryBGColor = new Color(0.8f, 0.8f, 0.8f);
+
     [Header("Pages")]
     [SerializeField] private GameObject _page3Done;
     [SerializeField] private GameObject _page4Failed;
 
     [Header("Page 3 : Done Page")]
-    [SerializeField] private ProceduralImage _doneImage;
+    [SerializeField] private Transform _doneModelSpawnPos;
     [SerializeField] private TMP_InputField _widthInputField;
     [SerializeField] private TMP_InputField _heightInputField;
     [SerializeField] private TMP_InputField _lengthInputField;
@@ -23,18 +42,22 @@ public class ProjectInspectView : MonoBehaviour
     [SerializeField] private Toggle _isPublicToggle;
     [SerializeField] private Button _saveButton;
     [SerializeField] private Button _onArPlaceButton;
+    [SerializeField] private ScrollRect _scrollRect;
+    [SerializeField] private GameObject _shadowCatchPlane;
+    [SerializeField] private List<CategoryButton> _categoryButtons;
 
     [Header("Page 4 : Failed Page")]
     [SerializeField] private Button _reTryBtn;
     [SerializeField] private TextMeshProUGUI _generateFailReasonText;
 
     private ProjectInspectPresenter _presenter;
-
+    private GameObject _spawnedModel; // 생성된 모델 참조용
 
 
     private void Awake()
     {
-        _presenter = new ProjectInspectPresenter(this);
+        HideAllPage();
+        _presenter = new ProjectInspectPresenter(this, _categoryButtons);
     }
 
     private void Start()
@@ -42,8 +65,14 @@ public class ProjectInspectView : MonoBehaviour
         _presenter.InitializeView();
         if(_returnBtn) _returnBtn.onClick.AddListener(_presenter.OnReturnClicked);
         if(_reTryBtn) _reTryBtn.onClick.AddListener(_presenter.OnRetryClicked);
-        if(_saveButton) _saveButton.onClick.AddListener(_presenter.OnSaveClicked);
+        if(_saveButton) _saveButton.onClick.AddListener(async () => await _presenter.OnSaveClicked(false));
         if(_onArPlaceButton) _onArPlaceButton.onClick.AddListener(_presenter.OnARPlaceClicked);
+    }
+
+    private void Update()
+    {
+        // 2번 수정 사항: 런타임에 생성된 모델을 천천히 회전시킴
+        UpdateModelRotation();
     }
 
     private void OnDestroy()
@@ -52,6 +81,11 @@ public class ProjectInspectView : MonoBehaviour
         if(_reTryBtn) _reTryBtn.onClick.RemoveAllListeners();
         if(_saveButton) _saveButton.onClick.RemoveAllListeners();
         if(_onArPlaceButton) _onArPlaceButton.onClick.RemoveAllListeners();
+
+        foreach(var item in _categoryButtons)
+        {
+            if(item.button) item.button.onClick.RemoveAllListeners();
+        }
     }
 
     //--- Page Control ---//
@@ -62,7 +96,8 @@ public class ProjectInspectView : MonoBehaviour
             return;
         }
         HideAllPage();
-        _page3Done?.SetActive(true);
+        if(_page3Done) _page3Done.SetActive(true);
+        if(_scrollRect) _scrollRect.verticalNormalizedPosition = 1f; // 페이지 전환 시 스크롤 최상단으로 이동
     }
 
     public void ShowFailedPage()
@@ -82,12 +117,34 @@ public class ProjectInspectView : MonoBehaviour
     }
 
     //--- Done Page ---//
-    public void SetDoneImage(Sprite sprite)
+    public async void SpawnModel3D(string localModelPath)
     {
-        if (_doneImage != null)
+        // 기존에 생성된 모델이 있다면 삭제
+        if (_spawnedModel != null) Destroy(_spawnedModel);
+
+        GameObject parentObj = new GameObject("AR_Model_Instance");
+        parentObj.transform.position = _doneModelSpawnPos.position;
+        parentObj.transform.rotation = _doneModelSpawnPos.rotation;
+
+        var gltf = new GltfImport();
+        bool success = await gltf.Load(localModelPath);
+
+        if (success)
         {
-            _doneImage.sprite = sprite;
+            bool instantSuccess = await gltf.InstantiateMainSceneAsync(parentObj.transform);
+            if (instantSuccess)
+            {
+                ScaleToUnitSize(parentObj, _targetMaxScale);
+                _spawnedModel = parentObj;
+
+                // 추가된 로직: 모델 바닥에 섀도우 플레인 위치시키기
+                UpdateShadowPlanePosition(parentObj);
+
+                Debug.Log("[ProjectInspectView] Successfully loaded and scaled model for preview");
+            }
+            else { Destroy(parentObj); }
         }
+        else { Destroy(parentObj); }
     }
 
     public void SetSizeInputField(ModelDimension modelDimension)
@@ -192,6 +249,27 @@ public class ProjectInspectView : MonoBehaviour
         return false;
     }
 
+    public void SetCategoryButtonSelected(string selectedCategory)
+    {
+        foreach(var item in _categoryButtons)
+        {
+            if(item.bgImage) item.bgImage.color = Color.white; // 선택 해제 색상으로 초기화
+            if(item.button)
+            {
+                var text = item.button.GetComponentInChildren<TextMeshProUGUI>();
+                if(text) text.color = Color.black; // 선택 해제 텍스트 색상으로 초기화
+            }
+        }
+
+        var find = _categoryButtons.Find(item => item.categoryName == selectedCategory);
+        if (find.bgImage && find.button)
+        {
+            find.bgImage.color = _selectedCategoryBGColor;
+            find.button.GetComponentInChildren<TextMeshProUGUI>().color = Color.white; // 선택된 카테고리 텍스트 색상 변경
+        }
+        
+    }
+
     //--- Failed Page ---//
     public void SetFailReason(string reason)
     {
@@ -199,5 +277,60 @@ public class ProjectInspectView : MonoBehaviour
         _generateFailReasonText.text = reason;
     }
 
+    private void ScaleToUnitSize(GameObject target, float targetScale)
+    {
+        // 1. 모든 자식 Renderer의 Bounds를 합쳐서 전체 영역 계산
+        Renderer[] renderers = target.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) return;
 
+        Bounds combinedBounds = renderers[0].bounds;
+        foreach (Renderer render in renderers)
+        {
+            combinedBounds.Encapsulate(render.bounds);
+        }
+
+        // 2. 가장 긴 축의 길이 찾기 ($x, y, z$ 중 max)
+        float maxDimension = Mathf.Max(combinedBounds.size.x, combinedBounds.size.y, combinedBounds.size.z);
+
+        if (maxDimension <= 0) return;
+
+        // 3. 현재 스케일을 기준으로 1이 되도록 비율 계산
+        // 1 / maxDimension 을 현재 로컬 스케일에 곱해줌
+        float scaleFactor = targetScale / maxDimension;
+        target.transform.localScale *= scaleFactor;
+
+        // (선택 사항) 피벗이 바닥이 아니라 중앙이라면 위치 보정이 필요할 수도 있어!
+    }
+
+    private void UpdateModelRotation()
+    {
+        // 모델이 존재하고 자동 회전이 활성화된 경우에만 회전
+        if (_spawnedModel != null && _enableAutoRotation)
+        {
+            _spawnedModel.transform.Rotate(Vector3.up, _rotationSpeed * Time.deltaTime);
+        }
+    }
+
+    private void UpdateShadowPlanePosition(GameObject target)
+    {
+        if (_shadowCatchPlane == null) return;
+
+        Renderer[] renderers = target.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) return;
+
+        // 1. 모델의 전체 Bounds 계산 (Scale된 상태 기준)
+        Bounds combinedBounds = renderers[0].bounds;
+        foreach (Renderer render in renderers)
+        {
+            combinedBounds.Encapsulate(render.bounds);
+        }
+
+        // 2. Bounds의 최하단 y값 찾기
+        float bottomY = combinedBounds.min.y;
+
+        // 3. 섀도우 플레인의 위치를 모델의 바닥 높이로 설정 (x, z는 스폰 위치 유지)
+        Vector3 planePos = _shadowCatchPlane.transform.position;
+        planePos.y = bottomY + 0.001f; // Z-Fighting 방지를 위해 살짝 띄움
+        _shadowCatchPlane.transform.position = planePos;
+    }
 }

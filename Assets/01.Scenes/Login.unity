@@ -1915,17 +1915,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 372549002}
   m_CullTransparentMesh: 1
---- !u!114 &481191337 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 3607274370382817295, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-  m_PrefabInstance: {fileID: 6406956907238022302}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41f1c5417c9d7ab4b84e531f83f60a4b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UnityEngine.UI.ProceduralImage.ProceduralImage
 --- !u!1 &519803232
 GameObject:
   m_ObjectHideFlags: 0
@@ -5418,17 +5407,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1334662500}
   m_CullTransparentMesh: 1
---- !u!114 &1354675971 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7072842280948773553, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-  m_PrefabInstance: {fileID: 6406956907238022302}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
 --- !u!1 &1379798926
 GameObject:
   m_ObjectHideFlags: 0
@@ -7009,22 +6987,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RectMask2D
   m_Padding: {x: -8, y: -5, z: -8, w: -5}
   m_Softness: {x: 0, y: 0}
---- !u!224 &1837779392 stripped
-RectTransform:
-  m_CorrespondingSourceObject: {fileID: 5011180670704180130, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-  m_PrefabInstance: {fileID: 6406956907238022302}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1837779395 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 1692680432392650724, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-  m_PrefabInstance: {fileID: 6406956907238022302}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41f1c5417c9d7ab4b84e531f83f60a4b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UnityEngine.UI.ProceduralImage.ProceduralImage
 --- !u!1 &1844808387
 GameObject:
   m_ObjectHideFlags: 0
@@ -8603,18 +8565,6 @@ PrefabInstance:
       propertyPath: m_SizeDelta.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3607274370382817295, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: m_Color.b
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 3607274370382817295, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: m_Color.g
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 3607274370382817295, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: m_Color.r
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 3760789708149126372, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -8695,33 +8645,9 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4102480739660474389, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: GreenCheckCircle
-      value: 
-      objectReference: {fileID: 21300000, guid: f0d79e4c8d20237419f31bd4c5843466, type: 3}
-    - target: {fileID: 4102480739660474389, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: _notificationIcon
-      value: 
-      objectReference: {fileID: 481191337}
-    - target: {fileID: 4102480739660474389, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: _notificationRect
-      value: 
-      objectReference: {fileID: 1837779392}
-    - target: {fileID: 4102480739660474389, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: _notificationText
-      value: 
-      objectReference: {fileID: 1354675971}
-    - target: {fileID: 4102480739660474389, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: _notificationBackground
-      value: 
-      objectReference: {fileID: 1837779395}
     - target: {fileID: 4191839608918093926, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
       propertyPath: m_Name
       value: PopupCanvas
-      objectReference: {fileID: 0}
-    - target: {fileID: 5011180670704180130, guid: 6086ac4a849c7e541ac0e941831d42eb, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: 100
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

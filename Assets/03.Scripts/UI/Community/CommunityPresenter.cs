@@ -158,9 +158,9 @@ public class CommunityPresenter
     {
         if (isContainMeberName)
         {
-            return $"{content.memberName}•{GetRelativeTime(content.createdAt)}•조회 {content.viewCount}•댓글 0•좋아요 {content.likeCount}";
+            return $"{content.memberName}•{GetRelativeTime(content.createdAt)}•조회 {content.viewCount}•댓글 {content.commentCount}•좋아요 {content.likeCount}";
         }
-        return $"{GetRelativeTime(content.createdAt)}•조회 {content.viewCount}•댓글 0•좋아요 {content.likeCount}";
+        return $"{GetRelativeTime(content.createdAt)}•조회 {content.viewCount}•댓글 {content.commentCount}•좋아요 {content.likeCount}";
     }
 
     private string GetRelativeTime(string isoDateTime)
@@ -217,16 +217,26 @@ public class CommunityPresenter
             {
                 List<Sprite> postImages = new List<Sprite>();
                 PostContent postContent = JsonConvert.DeserializeObject<PostContent>(jsonBody);
+
+                (responseCode, jsonBody) = await PostCommentService.GetPostCommentsById(postId);
+                List<CommentDto> postComments = JsonConvert.DeserializeObject<List<CommentDto>>(jsonBody);
                 _postView.ResetPostView();
                 _postView.SetPostView(
                         TranslateCategory(postContent.category),
                         postContent.title,
                         postContent.memberName,
                         TranslateInfo(postContent, false),
-                        postContent.content
+                        postContent.content,
+                        postContent.commentCount,
+                        await MemberService.GetMemberProfilePicUrlByMemberId(postContent.memberId)
                     );
 
                 _postView.AddContentImage(postContent.imageUrl);
+
+                foreach (var comment in postComments)
+                {
+                    _postView.AddComment(comment);
+                }
 
                 _postView.ShowPostView();
             }

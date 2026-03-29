@@ -56,11 +56,24 @@ public class Generate3DPresenter
 
     public void OnTakePictureClicked()
     {
-        NativeCamera.TakePicture((path) => {
-            if(path != null)
+        NativeCamera.TakePicture((path) =>
+        {
+            if (path != null)
             {
+                // 1. 방향이 보정된 텍스처를 읽어옴
+                Texture2D cameraTexture = NativeCamera.LoadImageAtPath(path, markTextureNonReadable: false);
+
+                if (cameraTexture == null)
+                {
+                    Debug.LogError("Failed to load image from path");
+                    return;
+                }
+
                 _imagePath = path;
-                PopupView.Instance.Presenter.ShowYesNo("선택한 이미지를 3D 모델로 변환하시겠습니까?", OnUserConfirmedGeneration, OnUserDeniedGeneration);
+                PopupView.Instance.Presenter.ShowYesNo(
+                    "선택한 이미지를 3D 모델로 변환하시겠습니까?",
+                    OnUserConfirmedGeneration,
+                    OnUserDeniedGeneration);
             }
         });
     }
@@ -74,6 +87,7 @@ public class Generate3DPresenter
 
     private async void OnUserConfirmedGeneration()
     {
+        PopupView.Instance.SetLoadingPannelActive(true);
         Debug.Log("User confirmed model generation");
         long resultCode;
         (resultCode, GenerateProcessingModelID) = await Generate3DService.PostUpload(_imagePath, furniture_type:"temp", name:"내 가구", isShared:false); // 임시 가구 업로드
@@ -82,9 +96,11 @@ public class Generate3DPresenter
         {
             PopupView.Instance.ShowMessage("이미지 업로드 중 오류가 발생했습니다");
             Debug.LogError($"[Generate3DPresenter.cs] Something went wrong while uploading image!! responseCode : {resultCode} response modelId : {GenerateProcessingModelID}");
+            PopupView.Instance.SetLoadingPannelActive(false);
             return;
         }
         Utils.SceneHistory.ChangeScene("Projects");
+        PopupView.Instance.SetLoadingPannelActive(false);
     }
 
     private void OnUserDeniedGeneration()

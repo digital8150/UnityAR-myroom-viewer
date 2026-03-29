@@ -35,6 +35,7 @@ public class PostContent
     public string visibilityScope;
     public int viewCount;
     public int likeCount;
+    public int commentCount;
     public string createdAt;
     public string updatedAt;
 }
