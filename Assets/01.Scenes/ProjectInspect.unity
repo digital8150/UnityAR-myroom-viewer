@@ -7766,7 +7766,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 317.0684}
+  m_SizeDelta: {x: 0, y: 344.72562}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1098916876
 MonoBehaviour:
@@ -7794,7 +7794,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.91764706, g: 0.9372549, b: 0.9764706, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -9963,7 +9963,7 @@ GameObject:
   - component: {fileID: 1620695059}
   - component: {fileID: 1620695061}
   m_Layer: 0
-  m_Name: Directional Light
+  m_Name: MainLight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9979,8 +9979,8 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 1
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 7.5
+  m_Color: {r: 1, g: 0.9607843, b: 0.9019608, a: 1}
+  m_Intensity: 5
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -10024,7 +10024,7 @@ Light:
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
   m_ColorTemperature: 7000
-  m_UseColorTemperature: 1
+  m_UseColorTemperature: 0
   m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
@@ -10042,13 +10042,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1620695058}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.44660696, y: 0.42747918, z: -0.25702307, w: -0.742794}
+  m_LocalRotation: {x: 0.3696438, y: -0.23911758, z: 0.099045746, w: 0.89239913}
   m_LocalPosition: {x: 0, y: 3, z: 0.452}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1622618754}
-  m_LocalEulerAnglesHint: {x: 50, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 45, y: -30, z: 0}
 --- !u!114 &1620695061
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11075,7 +11075,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 770264884}
   m_Direction: 2
   m_Value: 1.0000002
-  m_Size: 0.5088991
+  m_Size: 0.4558785
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
