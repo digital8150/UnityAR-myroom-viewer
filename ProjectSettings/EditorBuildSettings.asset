@@ -26,6 +26,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/01.Scenes/ARPlace.unity
     guid: 476cf0371334c514d8198430583c8938
+  - enabled: 1
+    path: Assets/01.Scenes/AIRecommend.unity
+    guid: 283a22c36e6bda54a84e6148defb0d7f
   m_configObjects:
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: 24f29a8151320b147a009ff5491f7a22, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 289c1b55c9541489481df5cc06664110, type: 3}

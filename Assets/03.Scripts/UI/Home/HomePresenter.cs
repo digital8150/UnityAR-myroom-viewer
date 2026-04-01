@@ -28,6 +28,12 @@ public class HomePresenter
         Utils.SceneHistory.ChangeScene("Community");
     }
 
+    public void OnToAIRecommendClicked()
+    {
+        Debug.Log("Navigate to AI Recommend Scene");
+        Utils.SceneHistory.ChangeScene("AIRecommend");
+    }
+
     public async void InitializeView()
     {
         var (responseCode, jsonBody) = await ProjectsService.GetMemberSearch(

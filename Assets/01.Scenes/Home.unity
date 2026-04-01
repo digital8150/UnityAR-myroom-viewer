@@ -3733,6 +3733,7 @@ MonoBehaviour:
   _toProjectsBtn: {fileID: 1592651141}
   _toProjectsBtn2: {fileID: 1549418448}
   _toCommunityBtn: {fileID: 1598667009}
+  _toAIRecommendBtn: {fileID: 288312515}
   _project1Thumbnail: {fileID: 344809555}
   _project1Text: {fileID: 1149178141}
   _project2Thumbnail: {fileID: 848403549}

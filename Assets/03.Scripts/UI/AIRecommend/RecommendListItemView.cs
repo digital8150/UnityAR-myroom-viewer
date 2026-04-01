@@ -39,6 +39,19 @@ public class RecommendListItemView : MonoBehaviour
         }
     }
 
+    public async void SetThumbnail(string imageUrl)
+    {
+        Sprite thumbnail = await Utils.ImageUtils.LoadSpriteFromUrlAsync(imageUrl);
+        if (thumbnail != null)
+        {
+            SetThumbnail(thumbnail);
+        }
+        else
+        {
+            Debug.LogError($"[RecommendListItemView] Failed to load thumbnail from URL: {imageUrl}");
+        }
+    }
+
     public void SetTitle(string title)
     {
         if (!_titleText)

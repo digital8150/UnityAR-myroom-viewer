@@ -18,6 +18,7 @@ public class WebsocketController : MonoBehaviour
 
     public event Action<string> OnModel3DGenerated;
     public event Action<string> OnModel3DGenerateFailed;
+    public event Action<string> OnAIRecommendReceived;
 
     private ClientWebSocket _webSocket = null;
     private CancellationTokenSource _cts;
@@ -39,6 +40,7 @@ public class WebsocketController : MonoBehaviour
         {
             _serverUri = $"ws://{Utils.Settings.Hostname}/ws/websocket";
         }
+
         Application.targetFrameRate = 120;
     }
 
@@ -103,10 +105,12 @@ public class WebsocketController : MonoBehaviour
             if (!string.IsNullOrEmpty(_userId))
             {
                 await SubscribeAsync($"/topic/model3d/{_userId}");
+                await SubscribeAsync($"/topic/recommand/{_userId}");
             }
             await SubscribeAsync("/topic/model3d/all");
             await SubscribeAsync("/topic/test");
             await SubscribeAsync("/topic/pong");
+
 
             _isReconnecting = false; // 연결 성공!
             _ = ReceiveLoop();
@@ -222,6 +226,8 @@ public class WebsocketController : MonoBehaviour
 
         string body = parts[1].TrimEnd('\0');
 
+        Debug.Log($"[WebSocket Receieved Body] {body}");
+
         if (body.Contains("MODEL_GENERATION_SUCCESS"))
         {
             UnityMainThreadDispatcher.Enqueue(() => {
@@ -229,11 +235,19 @@ public class WebsocketController : MonoBehaviour
                 Generate3DPresenter.GenerateProcessingModelID = -1; // 처리 완료 후 ID 초기화
             });
         }
-        else if (body.Contains("MODEL_GENERATION_FAILED"))
+        
+        if (body.Contains("MODEL_GENERATION_FAILED"))
         {
             UnityMainThreadDispatcher.Enqueue(() => {
                 OnModel3DGenerateFailed?.Invoke(body);
                 Generate3DPresenter.GenerateProcessingModelID = -1; // 처리 완료 후 ID 초기화
+            });
+        }
+
+        if (body.Contains("roomAnalysis"))
+        {
+            UnityMainThreadDispatcher.Enqueue(() => {
+                OnAIRecommendReceived?.Invoke(body);
             });
         }
     }

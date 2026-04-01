@@ -6,7 +6,7 @@ public class Generate3DPresenter
     private readonly Generate3DView _view;
     private string _imagePath = null;
     private ModelGenerationResponse _generated3DModel;
-
+    private bool isTakenPicture = false;
     public static int GenerateProcessingModelID = -1;
 
     public Generate3DPresenter(Generate3DView view)
@@ -44,6 +44,7 @@ public class Generate3DPresenter
                     //선택 완료 이후 로직
                     Debug.Log($"선택된 파일 경로: {path}");
                     _imagePath = path;
+                    isTakenPicture = false;
                     PopupView.Instance.Presenter.ShowYesNo("선택한 이미지를 3D 모델로 변환하시겠습니까?", OnUserConfirmedGeneration, OnUserDeniedGeneration);
                 }
             });
@@ -60,15 +61,7 @@ public class Generate3DPresenter
         {
             if (path != null)
             {
-                // 1. 방향이 보정된 텍스처를 읽어옴
-                Texture2D cameraTexture = NativeCamera.LoadImageAtPath(path, markTextureNonReadable: false);
-
-                if (cameraTexture == null)
-                {
-                    Debug.LogError("Failed to load image from path");
-                    return;
-                }
-
+                isTakenPicture = true;
                 _imagePath = path;
                 PopupView.Instance.Presenter.ShowYesNo(
                     "선택한 이미지를 3D 모델로 변환하시겠습니까?",
@@ -90,7 +83,7 @@ public class Generate3DPresenter
         PopupView.Instance.SetLoadingPannelActive(true);
         Debug.Log("User confirmed model generation");
         long resultCode;
-        (resultCode, GenerateProcessingModelID) = await Generate3DService.PostUpload(_imagePath, furniture_type:"temp", name:"내 가구", isShared:false); // 임시 가구 업로드
+        (resultCode, GenerateProcessingModelID) = await Generate3DService.PostUpload(_imagePath, furniture_type:"temp", name:"내 가구", isShared:false, isTakenPicture:isTakenPicture); // 임시 가구 업로드
         Debug.Log($"Upload request response code : {resultCode}");
         if(resultCode != 200)
         {

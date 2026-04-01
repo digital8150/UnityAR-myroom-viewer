@@ -20,6 +20,8 @@ public class HomeView : MonoBehaviour
     private Button _toProjectsBtn2;
     [SerializeField]
     private Button _toCommunityBtn;
+    [SerializeField]
+    private Button _toAIRecommendBtn;
 
     [Header("Recent Projects")]
     [SerializeField] private Image _project1Thumbnail;
@@ -44,7 +46,7 @@ public class HomeView : MonoBehaviour
         if(_toProjectsBtn) _toProjectsBtn.onClick.AddListener(_presenter.OnToProjectsClicked);
         if(_toProjectsBtn2) _toProjectsBtn2.onClick.AddListener(_presenter.OnToProjectsClicked);
         if(_toCommunityBtn) _toCommunityBtn.onClick.AddListener(_presenter.OnToCommunityClicked);
-
+        if(_toAIRecommendBtn) _toAIRecommendBtn.onClick.AddListener(_presenter.OnToAIRecommendClicked);
         _presenter.InitializeView();
     }
 

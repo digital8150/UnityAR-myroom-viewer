@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 207137475224502021}
   - component: {fileID: 7055655053149361322}
   - component: {fileID: 1277100134524124075}
+  - component: {fileID: 2492617464077095859}
   m_Layer: 0
   m_Name: LoginEverywhere
   m_TagString: Untagged
@@ -61,3 +62,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WebsocketController
   _serverUri: 
+--- !u!114 &2492617464077095859
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 241384794845701963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87c7c90e51581644180fd8b359036788, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnityMainThreadDispatcher

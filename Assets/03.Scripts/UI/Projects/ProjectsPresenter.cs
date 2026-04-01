@@ -116,11 +116,14 @@ public class ProjectsPresenter : IDisposable
         try
         {
             ModelGenerationResponse modelGenerationResponse = JsonConvert.DeserializeObject<ModelGenerationResponse>(websocketResponse);
-            RefreshView();
+            
         }
         catch
         {
 
+        }finally
+        {
+            RefreshView();
         }
     }
 

@@ -1,17 +1,18 @@
-ï»¿using System.IO;
-using System.Threading.Tasks;
+using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public class Generate3DService
+public static class AIRecommendService
 {
-    public static async Task<(long responseCode, int modelId)> PostUpload(string imagePath, string furniture_type = "table", string name = "í…Œì´ë¸”", string description = "", bool isShared = true, bool isTakenPicture = false)
+    public static async Task<(long, string)> PostRecommends(string category, int topK, string imagePath, bool isTakenPicture = false)
     {
         if (!File.Exists(imagePath))
         {
             Debug.LogError($"File not found: {imagePath}");
-            return (404, -1);
+            return (404, "-1");
         }
 
         byte[] imageBytes;
@@ -19,64 +20,55 @@ public class Generate3DService
         string extension = Path.GetExtension(imagePath).ToLower();
         string mimeType = extension == ".png" ? "image/png" : "image/jpeg";
 
-        // --- íšŒì „ ë¬¸ì œ í•´ê²° ë¡œì§ ì¶”ê°€ ---
+        // --- È¸Àü ¹®Á¦ ÇØ°á ·ÎÁ÷ Ãß°¡ ---
         if (isTakenPicture)
         {
-            // NativeCamera ê¸°ëŠ¥ì„ ì´ìš©í•´ íšŒì „ê°’ì´ ë³´ì •ëœ Texture2D ë¡œë“œ
-            // markNonReadableì„ falseë¡œ í•´ì•¼ ì¸ì½”ë”©(EncodeToJPG/PNG)ì´ ê°€ëŠ¥í•©ë‹ˆë‹¤.
+            // NativeCamera ±â´ÉÀ» ÀÌ¿ëÇØ È¸Àü°ªÀÌ º¸Á¤µÈ Texture2D ·Îµå
+            // markNonReadableÀ» false·Î ÇØ¾ß ÀÎÄÚµù(EncodeToJPG/PNG)ÀÌ °¡´ÉÇÕ´Ï´Ù.
             Texture2D texture = NativeCamera.LoadImageAtPath(imagePath);
 
             if (texture == null)
             {
                 Debug.LogError("Failed to load image via NativeCamera.");
-                return (500, -1);
+                return (500, "-1");
             }
 
-            // ë³´ì •ëœ í…ìŠ¤íŠ¸ë¥¼ ë‹¤ì‹œ ë°”ì´ë„ˆë¦¬ë¡œ ë³€í™˜ (ì›ë³¸ í™•ì¥ìì— ë§ì¶° ë³€í™˜)
+            // º¸Á¤µÈ ÅØ½ºÆ®¸¦ ´Ù½Ã ¹ÙÀÌ³Ê¸®·Î º¯È¯ (¿øº» È®ÀåÀÚ¿¡ ¸ÂÃç º¯È¯)
             imageBytes = (extension == ".png") ? texture.EncodeToPNG() : texture.EncodeToJPG();
 
-            // ë©”ëª¨ë¦¬ í•´ì œ
+            // ¸Ş¸ğ¸® ÇØÁ¦
             Object.Destroy(texture);
         }
         else
         {
-            // ì¼ë°˜ íŒŒì¼ì¸ ê²½ìš° ê¸°ì¡´ ë°©ì‹ëŒ€ë¡œ ì½ê¸°
+            // ÀÏ¹İ ÆÄÀÏÀÎ °æ¿ì ±âÁ¸ ¹æ½Ä´ë·Î ÀĞ±â
             imageBytes = await File.ReadAllBytesAsync(imagePath);
         }
         // --------------------------------
 
-        string apiUri = $"{Utils.Settings.BaseUrl}/api/model3ds/upload?furniture_type={furniture_type}&name={name}&is_shared={isShared.ToString().ToLower()}";
-
+        string apiUri = $"{Utils.Settings.BaseUrl}/api/recommands/request?category={category}&topK={topK}";
         using (var request = new UnityWebRequest(apiUri, "POST"))
         {
             var form = new WWWForm();
             form.AddBinaryData("image", imageBytes, fileName, mimeType);
-
             request.uploadHandler = new UploadHandlerRaw(form.data);
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", form.headers["Content-Type"]);
             request.SetRequestHeader("Authorization", $"Bearer {JWTToken.Token}");
-            request.SetRequestHeader("accept", "*/*");
+            request.SetRequestHeader("accept", "text/plain");
 
-            var operation = request.SendWebRequest();
-            while (!operation.isDone) await Task.Yield();
+            await request.SendWebRequest();
 
             if (request.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogError($"ì—…ë¡œë“œ ì‹¤íŒ¨: {request.error} | ìƒì„¸: {request.downloadHandler.text}");
-                return (request.responseCode, -1);
+                Debug.LogError($"¾÷·Îµå ½ÇÆĞ: {request.error} | »ó¼¼: {request.downloadHandler.text}");
+                Debug.LogError($"{imagePath}");
+                return (request.responseCode, request.downloadHandler.text);
             }
 
             string responseText = request.downloadHandler.text;
-            int extractedId = -1;
+            return (request.responseCode, responseText);
 
-            Match match = Regex.Match(responseText, @"ëª¨ë¸ ID:\s*(\d+)");
-            if (match.Success && int.TryParse(match.Groups[1].Value, out int id))
-            {
-                extractedId = id;
-            }
-
-            return (request.responseCode, extractedId);
         }
     }
 }
