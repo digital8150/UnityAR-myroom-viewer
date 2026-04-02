@@ -2,55 +2,55 @@ using System;
 using System.Collections.Generic;
 
 /// <summary>
-/// AI 가구 추천 웹소켓 응답
+/// AI 가구 추천 웹소켓 응답 (JSON Key 매핑 일치 버전)
 /// </summary>
 [Serializable]
 public class RoomAnalysisResponseDto
 {
-    public int MemberId { get; set; }
-    public string Status { get; set; }
-    public long Timestamp { get; set; }
-    public RoomAnalysisDto RoomAnalysis { get; set; }
-    public RecommendationDto Recommendation { get; set; }
+    public int memberId { get; set; }
+    public string status { get; set; }
+    public long timestamp { get; set; }
+    public RoomAnalysisDto roomAnalysis { get; set; }
+    public RecommendationDto recommendation { get; set; }
 }
 
 [Serializable]
 public class RoomAnalysisDto
 {
-    public string Style { get; set; }
-    public string Color { get; set; }
-    public string Material { get; set; }
-    public List<string> DetectedFurniture { get; set; }
-    public int DetectedCount { get; set; }
-    public List<DetailedDetectionDto> DetailedDetections { get; set; }
+    public string style { get; set; }
+    public string color { get; set; }
+    public string material { get; set; }
+    public List<string> detectedFurniture { get; set; }
+    public int detectedCount { get; set; }
+    public List<DetailedDetectionDto> detailedDetections { get; set; }
 }
 
 [Serializable]
 public class DetailedDetectionDto
 {
-    public string Name { get; set; }
-    public double Confidence { get; set; }
-    public List<List<double>> Bbox { get; set; } // [[x, y], [x, y]] 형태
+    public string name { get; set; }
+    public double confidence { get; set; }
+    public List<List<double>> bbox { get; set; }
 }
 
 [Serializable]
 public class RecommendationDto
 {
-    public string TargetCategory { get; set; }
-    public string Reasoning { get; set; }
-    public string SearchQuery { get; set; }
-    public List<FurnitureResultDto> Results { get; set; }
-    public int ResultCount { get; set; }
+    public string targetCategory { get; set; }
+    public string reasoning { get; set; }
+    public string searchQuery { get; set; }
+    public List<FurnitureResultDto> results { get; set; }
+    public int resultCount { get; set; }
 }
 
 [Serializable]
 public class FurnitureResultDto
 {
-    public int Rank { get; set; }
-    public double Score { get; set; }
-    public string FurnitureType { get; set; }
-    public int Model3dId { get; set; }
-    public string ImagePath { get; set; }
-    public string Filename { get; set; }
-    public Dictionary<string, object> Metadata { get; set; }
+    public int rank { get; set; }
+    public double score { get; set; }
+    public string furniture_type { get; set; } // snake_case 유지
+    public int model3d_id { get; set; }       // snake_case 유지
+    public string image_path { get; set; }      // snake_case 유지
+    public string filename { get; set; }
+    public Dictionary<string, object> metadata { get; set; }
 }

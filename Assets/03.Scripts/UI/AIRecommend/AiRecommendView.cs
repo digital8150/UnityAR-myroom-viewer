@@ -7,6 +7,9 @@ using UnityEngine.UI;
 
 public class AIRecommendView : MonoBehaviour
 {
+    [Header("General")]
+    [SerializeField] private Button _backButton;
+
     [Header("Page1: Landing")]
     [SerializeField] private GameObject _landingPage;
     [SerializeField] private Button _loadImageButton;
@@ -56,7 +59,8 @@ public class AIRecommendView : MonoBehaviour
         if(_takePictureButton) _takePictureButton.onClick.RemoveAllListeners();
         if(_confirmCategoryButton) _confirmCategoryButton.onClick.RemoveAllListeners();
         if(_goToRecommendListButton) _goToRecommendListButton.onClick.RemoveAllListeners();
-        foreach(var item in _categoryButtons)
+        if(_backButton) _backButton.onClick.RemoveAllListeners();
+        foreach (var item in _categoryButtons)
         {
             if(item.button) item.button.onClick.RemoveAllListeners();
         }
@@ -101,6 +105,15 @@ public class AIRecommendView : MonoBehaviour
         if (_loadingPage) _loadingPage.SetActive(false);
         if (_resultPage) _resultPage.SetActive(false);
         if (_listPage) _listPage.SetActive(false);
+    }
+
+    public void SetBackButtonHandler(UnityAction action)
+    {
+         if(_backButton)
+        {
+            _backButton.onClick.RemoveAllListeners();
+            _backButton.onClick.AddListener(action);
+        }
     }
     #endregion
 

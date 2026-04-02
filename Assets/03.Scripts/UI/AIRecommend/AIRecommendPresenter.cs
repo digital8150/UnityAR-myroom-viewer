@@ -3,6 +3,16 @@ using UnityEngine;
 using System;
 using System.Threading.Tasks;
 using UnityEngine.Rendering;
+using Utils;
+
+enum AIRecommendViewPage
+{
+    Landing,
+    Category,
+    Loading,
+    Result,
+    List
+}
 
 public class AIRecommendPresenter
 {
@@ -11,6 +21,7 @@ public class AIRecommendPresenter
     private bool _isTakenPicture = false;
     private RoomAnalysisResponseDto recommendData;
     private string _selectedCategory = "others";
+    private AIRecommendViewPage _currentPage;
 
     public AIRecommendPresenter(AIRecommendView view)
     {
@@ -20,13 +31,14 @@ public class AIRecommendPresenter
     public void Initialize()
     {
         _view.ShowLandingPage();
+        _currentPage = AIRecommendViewPage.Landing;
         _view.SetLoadImageButtonAction(OnLoadImageClicked);
         _view.SetTakePictureButtonAction(OnTakePictureClicked);
         _view.SetConfirmCategoryButtonAction(UploadImage);
-
+        _view.SetBackButtonHandler(OnBackButtonClicked);
         foreach (var item in _view.CategoryButtons)
         {
-            if(item.button) item.button.onClick.AddListener(() => HandleCategorySelected(item.categoryName));
+            if (item.button) item.button.onClick.AddListener(() => HandleCategorySelected(item.categoryName));
         }
     }
 
@@ -92,6 +104,7 @@ public class AIRecommendPresenter
     private void OnUserConfirmed()
     {
         _view.ShowCategoryPage();
+        _currentPage = AIRecommendViewPage.Category;
     }
 
     private void OnUserDenied()
@@ -120,6 +133,7 @@ public class AIRecommendPresenter
         {
             _view.SetLoadingProgress(0.0f);
             _view.ShowLoadingPage();
+            _currentPage = AIRecommendViewPage.Loading;
             _view.SetLoadingProgressSmooth(0.8f, 20);
             WebsocketController.Instance.OnAIRecommendReceived += OnAIRecommendReceived;
         }
@@ -139,7 +153,7 @@ public class AIRecommendPresenter
         Debug.Log($"[RecommendPresenter] Received AI Recommend: {message}");
         try
         {
-           recommendData = JsonConvert.DeserializeObject<RoomAnalysisResponseDto>(message);
+            recommendData = JsonConvert.DeserializeObject<RoomAnalysisResponseDto>(message);
         }
         catch (Exception ex)
         {
@@ -150,8 +164,10 @@ public class AIRecommendPresenter
 
         _view.SetLoadingProgress(1);
         SetResultPage(recommendData);
+        PrepareListPage();
         await Task.Delay(500);
         _view.ShowResultPage();
+        _currentPage = AIRecommendViewPage.Result;
         _view.SetGoToRecommendListButtonAction(ShowListPage);
     }
     #endregion
@@ -160,10 +176,10 @@ public class AIRecommendPresenter
     private async void SetResultPage(RoomAnalysisResponseDto data)
     {
         _view.SetResultText("공간 분석 결과<br><size=17px><font=\"Pretendard-Medium SDF\">\r\n" +
-            $"• 스타일: {data.RoomAnalysis.Style}\r\n" +
-            $"• 주요 재질: {data.RoomAnalysis.Material}\r\n" +
-            $"• 감지 가구: {data.RoomAnalysis.DetectedFurniture}\r\n" +
-            $"• 주요 색상: {data.RoomAnalysis.Color}</size></font>\r\n\r\n" +
+            $"• 스타일: {data.roomAnalysis.style}\r\n" +
+            $"• 주요 재질: {data.roomAnalysis.material}\r\n" +
+            $"• 감지 가구: {data.roomAnalysis.detectedFurniture}\r\n" +
+            $"• 주요 색상: {data.roomAnalysis.color}</size></font>\r\n\r\n" +
             "위 방에 어울리는 가구 추천");
         _view.SetResultThumbnail(await NativeCamera.LoadImageAtPathAsync(_imagePath));
     }
@@ -172,18 +188,54 @@ public class AIRecommendPresenter
     #region Recommend List Page Actions
     private void ShowListPage()
     {
-        foreach(var item in recommendData.Recommendation.Results)
+
+        _view.ShowListPage();
+        _currentPage = AIRecommendViewPage.List;
+    }
+
+    private async void PrepareListPage()
+    {
+        foreach (var item in recommendData.recommendation.results)
         {
             _view.AddListItem(
-                item.ImagePath,
-                item.Metadata["name"].ToString(),
+                await ModelService.GetModelThumbnailUrlByModelId(item.model3d_id),
+                await ModelService.GetModelNameByModelId(item.model3d_id),
                 () => { },
                 () => { });
         }
         _view.SetListResultText("해당 가구들 추천 이유 <font=\"Pretendard-Regular SDF\">\r\n" +
-            $"{recommendData.Recommendation.Reasoning}");
-        _view.ShowListPage();
+            $"{recommendData.recommendation.reasoning}");
     }
-
     #endregion
+
+    private void OnBackButtonClicked()
+    {
+        switch(_currentPage)
+        {
+            case AIRecommendViewPage.Landing:
+                SceneHistory.BackToPrevious();
+                break;
+            case AIRecommendViewPage.Category:
+                _view.ShowLandingPage();
+                _currentPage = AIRecommendViewPage.Landing;
+                break;
+            case AIRecommendViewPage.Loading:
+                PopupView.Instance.Presenter.ShowYesNo("추천 요청을 취소하시겠습니까?", () =>
+                {
+                    WebsocketController.Instance.OnAIRecommendReceived -= OnAIRecommendReceived;
+                    _view.ShowLandingPage();
+                    _currentPage = AIRecommendViewPage.Landing;
+                }, () => { });
+                break;
+            case AIRecommendViewPage.Result:
+                _view.ShowLandingPage();
+                _currentPage = AIRecommendViewPage.Landing;
+                break;
+            case AIRecommendViewPage.List:
+                _view.ShowResultPage();
+                _currentPage = AIRecommendViewPage.Result;
+                break;
+        }
+    }
 }
+

@@ -461,10 +461,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 339818464}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 119.505, y: -82.905}
+  m_SizeDelta: {x: 239.01, y: 165.81}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &140921061
 MonoBehaviour:
@@ -2341,10 +2341,10 @@ RectTransform:
   - {fileID: 780791886}
   m_Father: {fileID: 339818464}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 101, y: -199.81}
+  m_SizeDelta: {x: 202, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &654017407
 MonoBehaviour:
@@ -3963,7 +3963,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &855389763
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5787,7 +5787,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1327260170
 RectTransform:
   m_ObjectHideFlags: 0
@@ -6126,6 +6126,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8021bd7e692d2eb4b929bafb313b91c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AiRecommendView
+  _backButton: {fileID: 1299487453}
   _landingPage: {fileID: 855389762}
   _loadImageButton: {fileID: 1608787549}
   _takePictureButton: {fileID: 890417337}
@@ -8532,7 +8533,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: -24}
-  m_SizeDelta: {x: -48, y: 0}
+  m_SizeDelta: {x: -48, y: 218.50194}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1823242797
 MonoBehaviour:
@@ -9834,9 +9835,9 @@ RectTransform:
   m_Father: {fileID: 1823242796}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 205.12813}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2080810197
 MonoBehaviour:
