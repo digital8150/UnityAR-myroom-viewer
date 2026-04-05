@@ -12,6 +12,7 @@ public class ARPlaceCore : MonoBehaviour
     [Header("AR Managers")]
     [SerializeField] private ARRaycastManager _arRaycastManager;
     [SerializeField] private ARPlaneManager _arPlaneManager;
+    [SerializeField] private AROcclusionManager _occlusionManager;
 
     [Header("Sensitivity Settings")]
     [SerializeField] private float _rotationSensitivity = 0.5f;
@@ -68,6 +69,12 @@ public class ARPlaceCore : MonoBehaviour
         {
             _allowModelScaling = true;
             CurrentModelDimension = new ModelDimension(50, 50, 50);
+        }
+
+        // 뎁스 이미지가 사용 가능한지 확인
+        if (_occlusionManager.descriptor?.environmentDepthImageSupported == Supported.Unsupported)
+        {
+            PopupView.AddPopup(new PopupContext("이 기기는 AR 뎁스 기능을 지원하지 않습니다. 일부 기능이 제대로 동작하지 않을 수 있습니다."));
         }
     }
 
@@ -260,6 +267,7 @@ public class ARPlaceCore : MonoBehaviour
         GameObject parentObj = new GameObject("AR_Model_Instance");
         parentObj.transform.position = position;
         parentObj.transform.rotation = rotation;
+        parentObj.transform.SetParent(this.transform);
 
         var gltf = new GltfImport();
         bool success = await gltf.Load(CurrentModelPath);
@@ -270,6 +278,7 @@ public class ARPlaceCore : MonoBehaviour
             if (instantSuccess)
             {
                 ApplyRealScale(parentObj);
+                ApplyDefaultPBRSettings(parentObj);
                 _activeModel = parentObj;
                 SetupDimensionUI();
             }
@@ -407,5 +416,24 @@ public class ARPlaceCore : MonoBehaviour
     {
         if (CurrentModelDimension == null) return false;
         return Mathf.Max(CurrentModelDimension.width, CurrentModelDimension.height, CurrentModelDimension.length) > DimensionValidThreshold;
+    }
+
+    private void ApplyDefaultPBRSettings(GameObject root)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer renderer in renderers)
+        {
+            foreach (Material mat in renderer.materials)
+            {
+                // Metallic 설정 (0 ~ 1)
+                if (mat.HasProperty("metallicFactor"))
+                    mat.SetFloat("metallicFactor", 0.0f);
+
+                // Roughness 설정 (0 ~ 1)
+                if (mat.HasProperty("roughnessFactor"))
+                    mat.SetFloat("roughnessFactor", 0.5f);
+            }
+        }
     }
 }

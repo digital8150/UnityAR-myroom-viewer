@@ -11,6 +11,7 @@ public class ARPlacePresenter
     {
         _view = view;
         _core = core;
+        _view.SetCancleButtonAction(OnCancleButtonClicked);
     }
 
     public void UpdateView()

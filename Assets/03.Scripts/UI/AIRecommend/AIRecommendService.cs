@@ -1,4 +1,4 @@
-using System.IO;
+ï»¿using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -20,12 +20,12 @@ public static class AIRecommendService
         string extension = Path.GetExtension(imagePath).ToLower();
         string mimeType = extension == ".png" ? "image/png" : "image/jpeg";
 
-        // --- È¸Àü ¹®Á¦ ÇØ°á ·ÎÁ÷ Ãß°¡ ---
+        // --- íšŒì „ ë¬¸ì œ í•´ê²° ë¡œì§ ì¶”ê°€ ---
         if (isTakenPicture)
         {
-            // NativeCamera ±â´ÉÀ» ÀÌ¿ëÇØ È¸Àü°ªÀÌ º¸Á¤µÈ Texture2D ·Îµå
-            // markNonReadableÀ» false·Î ÇØ¾ß ÀÎÄÚµù(EncodeToJPG/PNG)ÀÌ °¡´ÉÇÕ´Ï´Ù.
-            Texture2D texture = NativeCamera.LoadImageAtPath(imagePath);
+            // NativeCamera ê¸°ëŠ¥ì„ ì´ìš©í•´ íšŒì „ê°’ì´ ë³´ì •ëœ Texture2D ë¡œë“œ
+            // markNonReadableì„ falseë¡œ í•´ì•¼ ì¸ì½”ë”©(EncodeToJPG/PNG)ì´ ê°€ëŠ¥í•©ë‹ˆë‹¤.
+            Texture2D texture = NativeCamera.LoadImageAtPath(imagePath, markTextureNonReadable:false);
 
             if (texture == null)
             {
@@ -33,15 +33,15 @@ public static class AIRecommendService
                 return (500, "-1");
             }
 
-            // º¸Á¤µÈ ÅØ½ºÆ®¸¦ ´Ù½Ã ¹ÙÀÌ³Ê¸®·Î º¯È¯ (¿øº» È®ÀåÀÚ¿¡ ¸ÂÃç º¯È¯)
+            // ë³´ì •ëœ í…ìŠ¤íŠ¸ë¥¼ ë‹¤ì‹œ ë°”ì´ë„ˆë¦¬ë¡œ ë³€í™˜ (ì›ë³¸ í™•ì¥ìì— ë§ì¶° ë³€í™˜)
             imageBytes = (extension == ".png") ? texture.EncodeToPNG() : texture.EncodeToJPG();
 
-            // ¸Ş¸ğ¸® ÇØÁ¦
+            // ë©”ëª¨ë¦¬ í•´ì œ
             Object.Destroy(texture);
         }
         else
         {
-            // ÀÏ¹İ ÆÄÀÏÀÎ °æ¿ì ±âÁ¸ ¹æ½Ä´ë·Î ÀĞ±â
+            // ì¼ë°˜ íŒŒì¼ì¸ ê²½ìš° ê¸°ì¡´ ë°©ì‹ëŒ€ë¡œ ì½ê¸°
             imageBytes = await File.ReadAllBytesAsync(imagePath);
         }
         // --------------------------------
@@ -61,7 +61,7 @@ public static class AIRecommendService
 
             if (request.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogError($"¾÷·Îµå ½ÇÆĞ: {request.error} | »ó¼¼: {request.downloadHandler.text}");
+                Debug.LogError($"ì—…ë¡œë“œ ì‹¤íŒ¨: {request.error} | ìƒì„¸: {request.downloadHandler.text}");
                 Debug.LogError($"{imagePath}");
                 return (request.responseCode, request.downloadHandler.text);
             }

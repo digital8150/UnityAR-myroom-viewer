@@ -14,7 +14,7 @@ public class MemberDto
 
 public static class MemberService
 {
-    public static async Task<(long responseCode, string jsonBody)> GetMemberByMemberId(int memberId)
+    public static async Task<(long responseCode, string jsonBody)> GetMemberJSONByMemberId(int memberId)
     {
         using(var request = UnityWebRequest.Get($"{Utils.Settings.BaseUrl}/api/members/{memberId}"))
         {
@@ -29,7 +29,7 @@ public static class MemberService
 
     public static async Task<string> GetMemberProfilePicUrlByMemberId(int memberId)
     {
-        var(responseCode, jsonBody) = await GetMemberByMemberId(memberId);
+        var(responseCode, jsonBody) = await GetMemberJSONByMemberId(memberId);
         if(responseCode == 200)
         {
             try
@@ -43,6 +43,24 @@ public static class MemberService
             }
         }
 
+        return null;
+    }
+
+    public static async Task<string> GetMemberUsernameByMemberId(int memberId)
+    {
+        var(responseCode, jsonBody) = await GetMemberJSONByMemberId(memberId);
+        if(responseCode == 200)
+        {
+            try
+            {
+                MemberDto member = JsonConvert.DeserializeObject<MemberDto>(jsonBody);
+                return member.username;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+        }
         return null;
     }
 }

@@ -69,6 +69,10 @@ public class  ModelDimension
         this.height = height;
     }
 
+    public override string ToString()
+    {
+            return $"{width} x {length} x {height}";
+    }
 }
 
 [Serializable]

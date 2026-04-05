@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using UnityEngine.Networking;
 using UnityEngine;
@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 
 public static class ModelService
 {
-    public static async Task<(long responseCode, string jsonBody)> GetModelByModelId(int modelId)
+    public static async Task<(long responseCode, string jsonBody)> GetModelJSONByModelId(int modelId)
     {
         using(var request = UnityWebRequest.Get($"{Utils.Settings.BaseUrl}/api/model3ds/{modelId}"))
         {
@@ -17,9 +17,29 @@ public static class ModelService
         }
     }
 
+    public static async Task<ModelData> GetModelDataByModelId(int modelId)
+    {
+        var(responseCode, jsonBody) = await GetModelJSONByModelId(modelId);
+        Debug.Log($"[ModelService] GetModelByModelId Response Code: {responseCode}, Body: {jsonBody}");
+        if (responseCode == 200)
+        {
+            try
+            {
+                ModelData model = JsonConvert.DeserializeObject<ModelData>(jsonBody);
+                Debug.Log($"[ModelService] Deserialized Model Name: {model.name}");
+                return model;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+        }
+        return null;
+    }
+
     public static async Task<string> GetModelNameByModelId(int modelId)
     {
-        var(responseCode, jsonBody) = await GetModelByModelId(modelId);
+        var(responseCode, jsonBody) = await GetModelJSONByModelId(modelId);
         Debug.Log($"[ModelService] GetModelByModelId Response Code: {responseCode}, Body: {jsonBody}");
         if (responseCode == 200)
         {
@@ -39,7 +59,7 @@ public static class ModelService
 
     public static async Task<string> GetModelThumbnailUrlByModelId(int modelId)
     {
-        var(responseCode, jsonBody) = await GetModelByModelId(modelId);
+        var(responseCode, jsonBody) = await GetModelJSONByModelId(modelId);
 
         if(responseCode == 200)
         {

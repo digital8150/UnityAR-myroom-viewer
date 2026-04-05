@@ -1,56 +1,80 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
-/// <summary>
-/// AI °¡±¸ ÃßÃµ À¥¼ÒÄÏ ÀÀ´ä (JSON Key ¸ÅÇÎ ÀÏÄ¡ ¹öÀü)
-/// </summary>
 [Serializable]
 public class RoomAnalysisResponseDto
 {
-    public int memberId { get; set; }
-    public string status { get; set; }
-    public long timestamp { get; set; }
-    public RoomAnalysisDto roomAnalysis { get; set; }
-    public RecommendationDto recommendation { get; set; }
+    public int MemberId { get; set; }
+    public string Status { get; set; }
+    public long Timestamp { get; set; }
+    public RoomAnalysisDto RoomAnalysis { get; set; }
+    public RecommendationDto Recommendation { get; set; }
 }
 
 [Serializable]
 public class RoomAnalysisDto
 {
-    public string style { get; set; }
-    public string color { get; set; }
-    public string material { get; set; }
-    public List<string> detectedFurniture { get; set; }
-    public int detectedCount { get; set; }
-    public List<DetailedDetectionDto> detailedDetections { get; set; }
+    public string Style { get; set; }
+    public string Color { get; set; }
+    public string Material { get; set; }
+
+    [JsonProperty("detected_furniture")]
+    public List<string> DetectedFurniture { get; set; }
+
+    [JsonProperty("detected_count")]
+    public int DetectedCount { get; set; }
+
+    [JsonProperty("detailed_detections")]
+    public List<DetailedDetectionDto> DetailedDetections { get; set; }
 }
 
 [Serializable]
 public class DetailedDetectionDto
 {
-    public string name { get; set; }
-    public double confidence { get; set; }
-    public List<List<double>> bbox { get; set; }
+    public string Name { get; set; }
+
+    [JsonProperty("name_en")]
+    public string NameEn { get; set; }
+
+    public double Confidence { get; set; }
+
+    [JsonProperty("bbox")]
+    public List<List<double>> BoundingBox { get; set; } // bboxë„ ëª…í™•í•˜ê²Œ ì»¨ë²¤ì…˜ ë§ì¶°ì„œ ë³€ê²½ ì¶”ì²œ
 }
 
 [Serializable]
 public class RecommendationDto
 {
-    public string targetCategory { get; set; }
-    public string reasoning { get; set; }
-    public string searchQuery { get; set; }
-    public List<FurnitureResultDto> results { get; set; }
-    public int resultCount { get; set; }
+    [JsonProperty("target_category")] // í˜¹ì‹œ ëª°ë¼ì„œ ì¶”ê°€
+    public string TargetCategory { get; set; }
+
+    public string Reasoning { get; set; }
+
+    [JsonProperty("search_query")] // í˜¹ì‹œ ëª°ë¼ì„œ ì¶”ê°€
+    public string SearchQuery { get; set; }
+
+    public List<FurnitureResultDto> Results { get; set; }
+
+    [JsonProperty("result_count")]
+    public int ResultCount { get; set; }
 }
 
 [Serializable]
 public class FurnitureResultDto
 {
-    public int rank { get; set; }
-    public double score { get; set; }
-    public string furniture_type { get; set; } // snake_case À¯Áö
-    public int model3d_id { get; set; }       // snake_case À¯Áö
-    public string image_path { get; set; }      // snake_case À¯Áö
-    public string filename { get; set; }
-    public Dictionary<string, object> metadata { get; set; }
+    public int Rank { get; set; }
+    public double Score { get; set; }
+
+    [JsonProperty("furniture_type")]
+    public string FurnitureType { get; set; }
+
+    [JsonProperty("model3d_id")]
+    public int Model3dId { get; set; }
+
+    [JsonProperty("image_path")]
+    public string ImagePath { get; set; }
+
+    public string Filename { get; set; }
+    public Dictionary<string, object> Metadata { get; set; }
 }

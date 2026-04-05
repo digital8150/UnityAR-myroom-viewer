@@ -16,7 +16,7 @@ public class PostCommentPresenter
 
     public async void SetComment(CommentDto commentDto)
     {
-        var (responseCode, jsonBody) = await MemberService.GetMemberByMemberId(commentDto.memberId);
+        var (responseCode, jsonBody) = await MemberService.GetMemberJSONByMemberId(commentDto.memberId);
         string profilePictureUrl = null;
         if (responseCode == 200)
         {

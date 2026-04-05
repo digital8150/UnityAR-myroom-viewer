@@ -4,6 +4,7 @@ using System;
 using System.Threading.Tasks;
 using UnityEngine.Rendering;
 using Utils;
+using System.Linq.Expressions;
 
 enum AIRecommendViewPage
 {
@@ -11,7 +12,9 @@ enum AIRecommendViewPage
     Category,
     Loading,
     Result,
-    List
+    List,
+    AR,
+    Inspect
 }
 
 public class AIRecommendPresenter
@@ -176,10 +179,10 @@ public class AIRecommendPresenter
     private async void SetResultPage(RoomAnalysisResponseDto data)
     {
         _view.SetResultText("공간 분석 결과<br><size=17px><font=\"Pretendard-Medium SDF\">\r\n" +
-            $"• 스타일: {data.roomAnalysis.style}\r\n" +
-            $"• 주요 재질: {data.roomAnalysis.material}\r\n" +
-            $"• 감지 가구: {data.roomAnalysis.detectedFurniture}\r\n" +
-            $"• 주요 색상: {data.roomAnalysis.color}</size></font>\r\n\r\n" +
+            $"• 스타일: {data.RoomAnalysis.Style}\r\n" +
+            $"• 주요 재질: {data.RoomAnalysis.Material}\r\n" +
+            $"• 감지 가구: {string.Join(", ",data.RoomAnalysis.DetectedFurniture)}\r\n" +
+            $"• 주요 색상: {data.RoomAnalysis.Color}</size></font>\r\n\r\n" +
             "위 방에 어울리는 가구 추천");
         _view.SetResultThumbnail(await NativeCamera.LoadImageAtPathAsync(_imagePath));
     }
@@ -195,16 +198,89 @@ public class AIRecommendPresenter
 
     private async void PrepareListPage()
     {
-        foreach (var item in recommendData.recommendation.results)
+        foreach (var item in recommendData.Recommendation.Results)
         {
             _view.AddListItem(
-                await ModelService.GetModelThumbnailUrlByModelId(item.model3d_id),
-                await ModelService.GetModelNameByModelId(item.model3d_id),
-                () => { },
-                () => { });
+                await ModelService.GetModelThumbnailUrlByModelId(item.Model3dId),
+                await ModelService.GetModelNameByModelId(item.Model3dId),
+                goToInspectAction: () => ShowInspectView(item.Model3dId),
+                goToARAction: () => ShowARView(item.Model3dId));
         }
         _view.SetListResultText("해당 가구들 추천 이유 <font=\"Pretendard-Regular SDF\">\r\n" +
-            $"{recommendData.recommendation.reasoning}");
+            $"{recommendData.Recommendation.Reasoning}");
+    }
+
+    private async void ShowARView(int modelId)
+    {
+        PopupView.Instance.SetLoadingPannelActive(true);
+        ModelData modelData = await ModelService.GetModelDataByModelId(modelId);
+        ModelDimension modelDimension;
+
+        //Get Model3D File
+        var (responseCode, modelPath) = await ProjectInspectService.GetModel3DFile(modelData.link);
+        if (responseCode != 200)
+        {
+            Debug.LogError($"Failed to get model. Code: {responseCode}");
+            PopupView.Instance.ShowMessage("모델 파일을 불러오는 데 실패했습니다.");
+            PopupView.Instance.SetLoadingPannelActive(false);
+            return;
+        }
+
+        //Get Model Dimension
+        var (dimResponsCode, modelDimensionResponse) = await ProjectInspectService.GetModel3DDimension(modelData.id);
+        if(dimResponsCode == 200)
+        {
+            modelDimension = JsonConvert.DeserializeObject<ModelDimension>(modelDimensionResponse);
+        }
+        else
+        {
+            modelDimension = new ModelDimension();
+        }
+
+        ARPlaceCore.CurrentModelPath = modelPath;
+        ARPlaceCore.CurrentModelDimension = modelDimension;
+        _view.ShowARPlacePage();
+        _currentPage = AIRecommendViewPage.AR;
+        _view.SetARCancleButtonAction(() =>
+        {
+            OnBackButtonClicked();
+        });
+        PopupView.Instance.SetLoadingPannelActive(false);
+    }
+
+    private async void ShowInspectView(int modelId)
+    {
+        PopupView.Instance.SetLoadingPannelActive(true);
+        ModelData modelData = await ModelService.GetModelDataByModelId(modelId);
+        ModelDimension modelDimension;
+
+        //Get Model3D File
+        var (responseCode, modelPath) = await ProjectInspectService.GetModel3DFile(modelData.link);
+        if (responseCode != 200)
+        {
+            Debug.LogError($"Failed to get model. Code: {responseCode}");
+            PopupView.Instance.ShowMessage("모델 파일을 불러오는 데 실패했습니다.");
+            PopupView.Instance.SetLoadingPannelActive(false);
+            return;
+        }
+
+        //Get Model Dimension
+        var (dimResponsCode, modelDimensionResponse) = await ProjectInspectService.GetModel3DDimension(modelData.id);
+        if (dimResponsCode == 200)
+        {
+            modelDimension = JsonConvert.DeserializeObject<ModelDimension>(modelDimensionResponse);
+        }
+        else
+        {
+            modelDimension = new ModelDimension();
+        }
+
+        _view.InspectView.SetContent(modelDimension, modelData);
+        _view.InspectView.SpawnModel3D(modelPath);
+
+        _view.ShowInspectPage();
+        _currentPage = AIRecommendViewPage.Inspect;
+        PopupView.Instance.SetLoadingPannelActive(false);
     }
     #endregion
 
@@ -234,6 +310,14 @@ public class AIRecommendPresenter
             case AIRecommendViewPage.List:
                 _view.ShowResultPage();
                 _currentPage = AIRecommendViewPage.Result;
+                break;
+            case AIRecommendViewPage.AR:
+                _view.ShowListPage();
+                _currentPage = AIRecommendViewPage.List;
+                break;
+            case AIRecommendViewPage.Inspect:
+                _view.ShowListPage();
+                _currentPage = AIRecommendViewPage.List;
                 break;
         }
     }

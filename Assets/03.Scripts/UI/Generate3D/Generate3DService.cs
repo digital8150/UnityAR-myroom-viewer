@@ -24,7 +24,7 @@ public class Generate3DService
         {
             // NativeCamera 기능을 이용해 회전값이 보정된 Texture2D 로드
             // markNonReadable을 false로 해야 인코딩(EncodeToJPG/PNG)이 가능합니다.
-            Texture2D texture = NativeCamera.LoadImageAtPath(imagePath);
+            Texture2D texture = NativeCamera.LoadImageAtPath(imagePath, markTextureNonReadable:false);
 
             if (texture == null)
             {

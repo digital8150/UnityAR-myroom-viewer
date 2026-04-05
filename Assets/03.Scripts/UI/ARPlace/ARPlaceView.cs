@@ -1,5 +1,6 @@
 ﻿using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 public class ARPlaceView : MonoBehaviour
@@ -22,7 +23,6 @@ public class ARPlaceView : MonoBehaviour
 
     private void Start()
     {
-        if(_cancleButton) _cancleButton.onClick.AddListener(_presenter.OnCancleButtonClicked);
         if(_shutterButton) _shutterButton.onClick.AddListener(_presenter.OnShutterButtonClicked);
         if (_showDimensionButton) _showDimensionButton.onClick.AddListener(_presenter.OnShowDimensionClicked);
         _presenter.UpdateView();
@@ -38,5 +38,14 @@ public class ARPlaceView : MonoBehaviour
     public void SetShowDimensionButtonText(string text)
     {
         if(_showDimensionButtonText) _showDimensionButtonText.text = text;
+    }
+
+    public void SetCancleButtonAction(UnityAction action)
+    {
+        if (_cancleButton)
+        {
+            _cancleButton.onClick.RemoveAllListeners();
+            _cancleButton.onClick.AddListener(action);
+        }
     }
 }

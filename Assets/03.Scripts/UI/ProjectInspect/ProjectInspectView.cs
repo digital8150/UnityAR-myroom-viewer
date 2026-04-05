@@ -120,7 +120,7 @@ public class ProjectInspectView : MonoBehaviour
     public async void SpawnModel3D(string localModelPath)
     {
         // 기존에 생성된 모델이 있다면 삭제
-        if (_spawnedModel != null) Destroy(_spawnedModel);
+        if (_spawnedModel) Destroy(_spawnedModel);
 
         GameObject parentObj = new GameObject("AR_Model_Instance");
         parentObj.transform.position = _doneModelSpawnPos.position;
@@ -139,7 +139,7 @@ public class ProjectInspectView : MonoBehaviour
 
                 // 추가된 로직: 모델 바닥에 섀도우 플레인 위치시키기
                 UpdateShadowPlanePosition(parentObj);
-
+                ApplyDefaultPBRSettings(parentObj);
                 Debug.Log("[ProjectInspectView] Successfully loaded and scaled model for preview");
             }
             else { Destroy(parentObj); }
@@ -332,5 +332,24 @@ public class ProjectInspectView : MonoBehaviour
         Vector3 planePos = _shadowCatchPlane.transform.position;
         planePos.y = bottomY + 0.001f; // Z-Fighting 방지를 위해 살짝 띄움
         _shadowCatchPlane.transform.position = planePos;
+    }
+
+    private void ApplyDefaultPBRSettings(GameObject root)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer renderer in renderers)
+        {
+            foreach (Material mat in renderer.materials)
+            {
+                // Metallic 설정 (0 ~ 1)
+                if(mat.HasProperty("metallicFactor"))
+                    mat.SetFloat("metallicFactor", 0.0f);
+
+                // Roughness 설정 (0 ~ 1)
+                if(mat.HasProperty("roughnessFactor"))
+                    mat.SetFloat("roughnessFactor", 0.5f);
+            }
+        }
     }
 }

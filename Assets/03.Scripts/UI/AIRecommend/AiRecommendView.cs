@@ -1,4 +1,4 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -9,6 +9,7 @@ public class AIRecommendView : MonoBehaviour
 {
     [Header("General")]
     [SerializeField] private Button _backButton;
+    [SerializeField] private GameObject _generalPanel;
 
     [Header("Page1: Landing")]
     [SerializeField] private GameObject _landingPage;
@@ -43,6 +44,15 @@ public class AIRecommendView : MonoBehaviour
     [SerializeField] private Transform _recommendListParent;
     [SerializeField] private RecommendListItemView _listItemPrefab;
     [SerializeField] private TextMeshProUGUI _listResultText;
+
+    [Header("Page6: Inspect")]
+    [SerializeField] private GameObject _inspectPage;
+    [SerializeField] private ReadonlyProjectInspectView _inspectView;
+    public ReadonlyProjectInspectView InspectView => _inspectView;
+
+    [Header("Page7: AR Place")]
+    [SerializeField] private GameObject _arPlacePagePrefab;
+    private GameObject _arPlacePage;
 
     private AIRecommendPresenter _presenter;
 
@@ -98,13 +108,33 @@ public class AIRecommendView : MonoBehaviour
         if (_listPage) _listPage.SetActive(true);
     }
 
-    private void HideAllPage()
+    public void ShowARPlacePage()
+    {
+        HideAllPage(true);
+        if (_arPlacePagePrefab)
+        {
+            _arPlacePage = Instantiate(_arPlacePagePrefab);
+            _arPlacePage.SetActive(true);
+        }
+    }
+
+    public void ShowInspectPage()
+    {
+        HideAllPage();
+        if (_inspectPage) _inspectPage.SetActive(true);
+    }
+
+    private void HideAllPage(bool hidePanel = false)
     {
         if (_landingPage) _landingPage.SetActive(false);
         if (_categoryPage) _categoryPage.SetActive(false);
         if (_loadingPage) _loadingPage.SetActive(false);
         if (_resultPage) _resultPage.SetActive(false);
         if (_listPage) _listPage.SetActive(false);
+        if (hidePanel && _generalPanel) _generalPanel.SetActive(false);
+        else if (_generalPanel) _generalPanel.SetActive(true);
+        if (_arPlacePage) Destroy(_arPlacePage);
+        if (_inspectPage) _inspectPage.SetActive(false);
     }
 
     public void SetBackButtonHandler(UnityAction action)
@@ -138,14 +168,14 @@ public class AIRecommendView : MonoBehaviour
     #endregion
 
     #region Page 2 : Select Category
-    /* ´ÙÁß ¼±ÅÃ Ä«Å×°í¸®¿ë 
+    /* ë‹¤ì¤‘ ì„ íƒ ì¹´í…Œê³ ë¦¬ìš© 
     public void SetCategoryButtonSelected(string selectedCategory, bool isSelected)
     {
         var find = _categoryButtons.Find(item => item.categoryName == selectedCategory);
         if (find.bgImage && find.button)
         {
             find.bgImage.color = isSelected ? _selectedCategoryBGColor : Color.white;
-            find.button.GetComponentInChildren<TextMeshProUGUI>().color = isSelected ? Color.white : Color.black; // ¼±ÅÃµÈ Ä«Å×°í¸® ÅØ½ºÆ® »ö»ó º¯°æ
+            find.button.GetComponentInChildren<TextMeshProUGUI>().color = isSelected ? Color.white : Color.black; // ì„ íƒëœ ì¹´í…Œê³ ë¦¬ í…ìŠ¤íŠ¸ ìƒ‰ìƒ ë³€ê²½
         }
     }
     */
@@ -154,11 +184,11 @@ public class AIRecommendView : MonoBehaviour
     {
         foreach (var item in _categoryButtons)
         {
-            if (item.bgImage) item.bgImage.color = Color.white; // ¼±ÅÃ ÇØÁ¦ »ö»óÀ¸·Î ÃÊ±âÈ­
+            if (item.bgImage) item.bgImage.color = Color.white; // ì„ íƒ í•´ì œ ìƒ‰ìƒìœ¼ë¡œ ì´ˆê¸°í™”
             if (item.button)
             {
                 var text = item.button.GetComponentInChildren<TextMeshProUGUI>();
-                if (text) text.color = Color.black; // ¼±ÅÃ ÇØÁ¦ ÅØ½ºÆ® »ö»óÀ¸·Î ÃÊ±âÈ­
+                if (text) text.color = Color.black; // ì„ íƒ í•´ì œ í…ìŠ¤íŠ¸ ìƒ‰ìƒìœ¼ë¡œ ì´ˆê¸°í™”
             }
         }
 
@@ -166,7 +196,7 @@ public class AIRecommendView : MonoBehaviour
         if (find.bgImage && find.button)
         {
             find.bgImage.color = _selectedCategoryBGColor;
-            find.button.GetComponentInChildren<TextMeshProUGUI>().color = Color.white; // ¼±ÅÃµÈ Ä«Å×°í¸® ÅØ½ºÆ® »ö»ó º¯°æ
+            find.button.GetComponentInChildren<TextMeshProUGUI>().color = Color.white; // ì„ íƒëœ ì¹´í…Œê³ ë¦¬ í…ìŠ¤íŠ¸ ìƒ‰ìƒ ë³€ê²½
         }
 
     }
@@ -184,7 +214,7 @@ public class AIRecommendView : MonoBehaviour
     #region Page 3 : Loading
     private Coroutine _loadingCoroutine;
     /// <summary>
-    /// 0~1 °ªÀ¸·Î ÁøÇà µµ ¾÷µ¥ÀÌÆ®
+    /// 0~1 ê°’ìœ¼ë¡œ ì§„í–‰ ë„ ì—…ë°ì´íŠ¸
     /// </summary>
     /// <param name="progress">0% : 0, 100% : 1</param>
     public void SetLoadingProgress(float progress)
@@ -201,10 +231,10 @@ public class AIRecommendView : MonoBehaviour
 
     public void SetLoadingProgressSmooth(float targetProgress, float duration = 0.5f)
     {
-        // ÀÌ¹Ì ½ÇÇà ÁßÀÎ º¸°£ ÀÛ¾÷ÀÌ ÀÖ´Ù¸é ÁßÁö
+        // ì´ë¯¸ ì‹¤í–‰ ì¤‘ì¸ ë³´ê°„ ì‘ì—…ì´ ìˆë‹¤ë©´ ì¤‘ì§€
         if (_loadingCoroutine != null) StopCoroutine(_loadingCoroutine);
 
-        // »õ·Î¿î º¸°£ ½ÃÀÛ
+        // ìƒˆë¡œìš´ ë³´ê°„ ì‹œì‘
         _loadingCoroutine = StartCoroutine(AnimateProgress(targetProgress, duration));
     }
 
@@ -218,7 +248,7 @@ public class AIRecommendView : MonoBehaviour
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            // Mathf.SmoothStepÀ» »ç¿ëÇÏ¸é ½ÃÀÛ°ú ³¡ÀÌ ´õ ºÎµå·´½À´Ï´Ù.
+            // Mathf.SmoothStepì„ ì‚¬ìš©í•˜ë©´ ì‹œì‘ê³¼ ëì´ ë” ë¶€ë“œëŸ½ìŠµë‹ˆë‹¤.
             _loadingProgressBar.value = Mathf.Lerp(startValue, target, elapsed / duration);
             yield return null;
         }
@@ -274,5 +304,19 @@ public class AIRecommendView : MonoBehaviour
         clone.SetGoToARAction(goToARAction);
         clone.SetGoToInspectAction(goToInspectAction);
     }
+    #endregion
+
+    #region Page 6 : AR Place
+    public void SetARCancleButtonAction(UnityAction action)
+    {
+        if(_arPlacePage)
+        {
+            var arPlaceView = _arPlacePage.GetComponentInChildren<ARPlaceView>();
+            if(arPlaceView)
+            {
+                arPlaceView.SetCancleButtonAction(action);
+            }
+        }
+    }    
     #endregion
 }
