@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Collections;
 using System.Threading.Tasks;
 using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
@@ -7,10 +8,53 @@ using UnityEngine;
 public class AuthPresenter
 {
     private readonly AuthView _view;
+    private float _splashDuration;
 
     public AuthPresenter(AuthView view)
     {
         _view = view;
+    }
+
+    public void Start(float spashDuration)
+    {
+        _splashDuration = spashDuration;
+        _view.InitView();
+        _view.StartCoroutine(SplashScreenSequence());
+    }
+
+    private IEnumerator SplashScreenSequence()
+    {
+        // 2. Task 실행
+        yield return _view.StartCoroutine(DOTransitionSplash(0.5f, 0f, 0f, 1f));
+        var logonTask = TryLogonWithRefreshToken();
+        yield return new WaitForSeconds(_splashDuration);
+
+        // 3. Task가 완료될 때까지 코루틴 중단 (WaitUntil 사용)
+        yield return new WaitUntil(() => logonTask.IsCompleted);
+
+        if (logonTask.Result)
+        {
+            Utils.SceneHistory.ChangeScene("Home");
+        }
+        else
+        {
+            yield return _view.StartCoroutine(DOTransitionSplash(0.5f, 0f, 1f, 0f));
+
+            _view.SetSplashScreenOpacity(0f);
+            _view.SetSplashScreenActive(false);
+        }
+    }
+
+    private IEnumerator DOTransitionSplash(float duration, float elapsed, float startAlpha, float targetAlpha)
+    {
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float newOpacity = Mathf.Lerp(startAlpha, targetAlpha, elapsed / duration);
+            _view.SetSplashScreenOpacity(newOpacity);
+            yield return null;
+        }
     }
 
     public async void OnLoginClicked()
@@ -114,7 +158,7 @@ public class AuthPresenter
         _view.ShowRegisterPanel();
     }
 
-    public async void TryLogonWithRefreshToken()
+    public async Task<bool> TryLogonWithRefreshToken()
     {
         if(PlayerPrefs.HasKey("RefreshToken"))
         {
@@ -136,7 +180,7 @@ public class AuthPresenter
                     {
                         JWTToken.Token = loginResponse.token;
                         await WebsocketController.Instance?.ConnectToServer();
-                        Utils.SceneHistory.ChangeScene("Home");
+                        return true;
                     }
 
                 }
@@ -147,6 +191,8 @@ public class AuthPresenter
             }
 
         }
+
+        return false;
     }
 
     private async Task<bool> IsEmailExists(string email)

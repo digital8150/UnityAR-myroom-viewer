@@ -44,6 +44,10 @@ public class AuthView : MonoBehaviour
     [Header("4. Register Completed Page Elements")] // 완료 페이지 관련
     [SerializeField] private Button toLoginBtn2; // 완료 후 로그인 창으로 이동
 
+    [Header("5. Splash Screen")]
+    [SerializeField] private CanvasGroup splashScreen;
+    [SerializeField] private float _splashDuration = 2f;
+
     public string UserName => regName.text;
     public string Email => loginPanel.activeSelf ? loginEmail.text : regEmail.text;
     public string Password => loginPanel.activeSelf ? loginPass.text : regPass.text;
@@ -65,8 +69,9 @@ public class AuthView : MonoBehaviour
 
     void Start()
     {
-        ShowLoginPanel();
-        _presenter.TryLogonWithRefreshToken();
+        _presenter.Start(_splashDuration);
+        //InitView();
+        //_presenter.TryLogonWithRefreshToken();
     }
 
     private void OnDestroy()
@@ -80,6 +85,23 @@ public class AuthView : MonoBehaviour
     }
 
     //--- Public Methods ---//
+    public void InitView()
+    {
+        ResetWrongIndicator();
+        HideAllPanels();
+        SetSplashScreenOpacity(0f);
+        if (splashScreen) splashScreen.gameObject.SetActive(true); //로그인 패널 보여준 상태에서 위에 스플래시 스크린 덧대기
+    }
+
+    public void SetSplashScreenOpacity(float opacity)
+    {
+        if(splashScreen) splashScreen.alpha = opacity;
+    }
+
+    public void SetSplashScreenActive(bool isActive)
+    {
+        if(splashScreen) splashScreen.gameObject.SetActive(isActive);
+    }
 
     public void SetLoading(bool isLoading)
     {
@@ -182,5 +204,6 @@ public class AuthView : MonoBehaviour
         if (loginPanel) loginPanel.SetActive(false);
         if (registerPanel) registerPanel.SetActive(false);
         if (registerCompletedPanel) registerCompletedPanel.SetActive(false);
+        if (splashScreen) splashScreen.gameObject.SetActive(false);
     }
 }
