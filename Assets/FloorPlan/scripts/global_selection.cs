@@ -114,9 +114,9 @@ public class global_selection : MonoBehaviour
     {
         if (dragSelect == true)
         {
-            var rect = Utils.GetScreenRect(p1, Input.mousePosition);
-            Utils.DrawScreenRect(rect, new Color(0.8f, 0.8f, 0.95f, 0.25f));
-            Utils.DrawScreenRectBorder(rect, 2, new Color(0.8f, 0.8f, 0.95f));
+            var rect = Utils2.GetScreenRect(p1, Input.mousePosition);
+            Utils2.DrawScreenRect(rect, new Color(0.8f, 0.8f, 0.95f, 0.25f));
+            Utils2.DrawScreenRectBorder(rect, 2, new Color(0.8f, 0.8f, 0.95f));
         }
     }
 

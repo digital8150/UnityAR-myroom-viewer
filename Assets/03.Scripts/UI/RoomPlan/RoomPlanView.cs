@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class RoomPlanView : MonoBehaviour
@@ -27,18 +28,24 @@ public class RoomPlanView : MonoBehaviour
     [Header("PlayGround : Edit")]
     [SerializeField] private GameObject _editPage;
     [SerializeField] private RawImage _viewportImage;
+    [SerializeField] private TouchView _viewportTouch;
     [SerializeField] private Camera _viewportCamera;
+    [SerializeField] private Transform _viewportCameraTarget;
     [SerializeField] private List<CategoryButton> _categoryButtons;
+    [SerializeField] private Button _backButton2;
+    [SerializeField] private Material _defaultWallMaterial;
+
 
     [Header("Common")]
     [SerializeField] private Button _backButton;
 
     private RoomPlanPresenter _presenter;
 
+
     #region Unity Life Cycle
     private void Awake()
     {
-        _presenter = new RoomPlanPresenter(this);
+        _presenter = new RoomPlanPresenter(this, _viewportTouch, _defaultWallMaterial);
     }
     #endregion
 
@@ -98,6 +105,7 @@ public class RoomPlanView : MonoBehaviour
     {
         SetButton(_newProjectButton, onNewProject);
         SetButton(_backButton, onBack);
+        SetButton(_backButton2, onBack);
     }
 
     public void SetModalActions(UnityAction onCancel, UnityAction onSelectDefault, UnityAction onLoadFloor)
@@ -133,6 +141,36 @@ public class RoomPlanView : MonoBehaviour
             return;
         }
         SetButton(button, onClick);
+    }
+
+    public void SetViewPortCameraPosition(Vector3 position)
+    {
+        if(!_viewportCameraTarget)
+        {
+            Debug.LogError("Error : RoomPlanView: _viewportCameraTarget reference is missing.");
+            return;
+        }
+        _viewportCameraTarget.position = position;
+    }
+
+    public void SetViewPortCameraRotation(Vector3 rotation)
+    {
+        if (!_viewportCameraTarget)
+        {
+            Debug.LogError("Error : RoomPlanView: _viewportCameraTarget reference is missing.");
+            return;
+        }
+        _viewportCameraTarget.rotation = Quaternion.Euler(rotation);
+    }
+
+    public (Vector3 position, Vector3 rotation) GetViewPortCameraTransform()
+    {
+        if (!_viewportCameraTarget)
+        {
+            Debug.LogError("Error : RoomPlanView: _viewportCameraTarget reference is missing.");
+            return (Vector3.zero, Vector3.zero);
+        }
+        return (_viewportCameraTarget.position, _viewportCameraTarget.rotation.eulerAngles);
     }
 
     #endregion

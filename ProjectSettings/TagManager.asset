@@ -3,7 +3,17 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 3
-  tags: []
+  tags:
+  - Fire
+  - furniture
+  - imageDisplayed
+  - wall
+  - window
+  - door
+  - wall1
+  - Spawner
+  - wallPaperr
+  - paint
   layers:
   - Default
   - TransparentFX

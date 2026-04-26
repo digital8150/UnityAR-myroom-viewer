@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 //used for drawing our marquee
-public static class Utils
+public static class Utils2
 {
     static Texture2D _whiteTexture;
     public static Texture2D WhiteTexture
@@ -31,13 +31,13 @@ public static class Utils
     public static void DrawScreenRectBorder(Rect rect, float thickness, Color color)
     {
         // Top
-        Utils.DrawScreenRect(new Rect(rect.xMin, rect.yMin, rect.width, thickness), color);
+        Utils2.DrawScreenRect(new Rect(rect.xMin, rect.yMin, rect.width, thickness), color);
         // Left
-        Utils.DrawScreenRect(new Rect(rect.xMin, rect.yMin, thickness, rect.height), color);
+        Utils2.DrawScreenRect(new Rect(rect.xMin, rect.yMin, thickness, rect.height), color);
         // Right
-        Utils.DrawScreenRect(new Rect(rect.xMax - thickness, rect.yMin, thickness, rect.height), color);
+        Utils2.DrawScreenRect(new Rect(rect.xMax - thickness, rect.yMin, thickness, rect.height), color);
         // Bottom
-        Utils.DrawScreenRect(new Rect(rect.xMin, rect.yMax - thickness, rect.width, thickness), color);
+        Utils2.DrawScreenRect(new Rect(rect.xMin, rect.yMax - thickness, rect.width, thickness), color);
     }
 
     public static Rect GetScreenRect(Vector3 screenPosition1, Vector3 screenPosition2)

@@ -15,6 +15,7 @@ public class Builder : MonoBehaviour
     public static string data;
     public static Point[] points;
     public static NamesSub[] classes;
+    public static Material wallMat;
 
     public GameObject spwaner;
 
@@ -139,16 +140,24 @@ public class Builder : MonoBehaviour
     void componentsAdder(GameObject obj,Point p,string className)
     {
         obj.AddComponent<MeshFilter>();
-        obj.AddComponent<MeshRenderer>();
+        MeshRenderer renderer =  obj.AddComponent<MeshRenderer>();
         
         if (className.Equals("wall"))
         {
             obj.tag = "wall";
+
+
+
             obj.AddComponent<WallMesh>();
 
             WallMesh temp = obj.GetComponent<WallMesh>();
             temp.setPoints((float)p.x1, (float)p.y1, (float)p.x2, (float)p.y2);
             temp.setGameObjectReference(obj);
+            if (wallMat != null)
+            {
+                Debug.Log("벽에 색칠하기");
+                renderer.material = wallMat;
+            }
         }
         if (className.Equals("door"))
         {
