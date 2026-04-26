@@ -38,10 +38,11 @@ public class AuthPresenter
         }
         else
         {
+            _view.ShowLoginPanel();
             yield return _view.StartCoroutine(DOTransitionSplash(0.5f, 0f, 1f, 0f));
-
             _view.SetSplashScreenOpacity(0f);
             _view.SetSplashScreenActive(false);
+
         }
     }
 
@@ -75,6 +76,7 @@ public class AuthPresenter
             {
                 LoginResponse response = JsonConvert.DeserializeObject<LoginResponse>(body);
                 JWTToken.Token = response.token;
+                JWTToken.RefreshToken = response.refreshToken;
                 if (_view.GetAutoLoginToggle())
                 {
                     Utils.Cipher.SecureStorage.Instance.SetValue("RefreshToken", response.refreshToken);
@@ -170,7 +172,7 @@ public class AuthPresenter
 #endif
             RefreshRequest requestData = new RefreshRequest();
             requestData.refreshToken = refreshToken;
-            var (responseCode, responseBody) = await AuthService.PostRefrsh(requestData);
+            var (responseCode, responseBody) = await AuthService.PostRefresh(requestData);
             if(responseCode == 200)
             {
                 try
@@ -179,6 +181,7 @@ public class AuthPresenter
                     if (!String.IsNullOrEmpty(loginResponse.token))
                     {
                         JWTToken.Token = loginResponse.token;
+                        JWTToken.RefreshToken = loginResponse.refreshToken;
                         await WebsocketController.Instance?.ConnectToServer();
                         return true;
                     }

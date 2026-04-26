@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
-using UnityEngine.Networking;
 using UnityEngine;
 using Newtonsoft.Json;
+
 [Serializable]
 public class MemberDto
 {
@@ -12,25 +12,22 @@ public class MemberDto
     public string profileImageUrl;
 }
 
-public static class MemberService
+// BaseService 상속을 위해 일반 class로 변경 (메서드는 static 유지)
+public class MemberService : BaseService
 {
     public static async Task<(long responseCode, string jsonBody)> GetMemberJSONByMemberId(int memberId)
     {
-        using(var request = UnityWebRequest.Get($"{Utils.Settings.BaseUrl}/api/members/{memberId}"))
-        {
-            request.SetRequestHeader("Authorization", $"Bearer {JWTToken.Token}");
-            request.SetRequestHeader("accept", "application/json");
+        string url = $"{Utils.Settings.BaseUrl}/api/members/{memberId}";
 
-            await request.SendWebRequest();
-
-            return (request.responseCode, request.downloadHandler.text);
-        }
+        // BaseService의 SendRequest로 통일 (토큰 리프레시 자동 적용)
+        return await SendRequest(url, "GET");
     }
 
     public static async Task<string> GetMemberProfilePicUrlByMemberId(int memberId)
     {
-        var(responseCode, jsonBody) = await GetMemberJSONByMemberId(memberId);
-        if(responseCode == 200)
+        var (responseCode, jsonBody) = await GetMemberJSONByMemberId(memberId);
+
+        if (responseCode == 200)
         {
             try
             {
@@ -48,8 +45,9 @@ public static class MemberService
 
     public static async Task<string> GetMemberUsernameByMemberId(int memberId)
     {
-        var(responseCode, jsonBody) = await GetMemberJSONByMemberId(memberId);
-        if(responseCode == 200)
+        var (responseCode, jsonBody) = await GetMemberJSONByMemberId(memberId);
+
+        if (responseCode == 200)
         {
             try
             {
@@ -61,6 +59,7 @@ public static class MemberService
                 Debug.LogException(ex);
             }
         }
+
         return null;
     }
 }

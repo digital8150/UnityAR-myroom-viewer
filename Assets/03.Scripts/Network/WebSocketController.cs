@@ -1,6 +1,4 @@
-﻿    using NativeCameraNamespace;
-using System;
-using System.Collections;
+﻿using System;
 using System.IO;
 using System.Net.WebSockets;
 using System.Text;

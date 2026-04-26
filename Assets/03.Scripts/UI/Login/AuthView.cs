@@ -204,6 +204,5 @@ public class AuthView : MonoBehaviour
         if (loginPanel) loginPanel.SetActive(false);
         if (registerPanel) registerPanel.SetActive(false);
         if (registerCompletedPanel) registerCompletedPanel.SetActive(false);
-        if (splashScreen) splashScreen.gameObject.SetActive(false);
     }
 }

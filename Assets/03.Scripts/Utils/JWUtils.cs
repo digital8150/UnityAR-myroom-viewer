@@ -15,6 +15,7 @@ public class JWTPayload
 public class JWTToken
 {
     public static string Token;
+    public static string RefreshToken;
 }
 
 namespace Utils

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using UnityEngine;
-using UnityEngine.Networking;
 
 [Serializable]
 public class PostResponse
@@ -59,51 +57,21 @@ public class Sort
     public bool unsorted;
 }
 
-public class CommunityService
+// BaseService를 상속받아 중복 코드 완벽 제거!
+public class CommunityService : BaseService
 {
     public static async Task<(long, string)> GetPostById(int postId)
     {
-        long responseCode = 404;
-        using (var request = UnityEngine.Networking.UnityWebRequest.Get($"{Utils.Settings.BaseUrl}/api/posts/{postId}"))
-        {
-            request.SetRequestHeader("Authorization", $"Bearer {JWTToken.Token}");
-            request.SetRequestHeader("accept", "application/json");
+        string url = $"{Utils.Settings.BaseUrl}/api/posts/{postId}";
 
-            await request.SendWebRequest();
-
-            responseCode = request.responseCode;
-
-            if(request.result != UnityWebRequest.Result.Success)
-            {
-                Debug.LogError($"Request Failed : {request.error} | Details: {request.downloadHandler.text}");
-                return (responseCode, string.Empty);
-            }
-
-            string body = request.downloadHandler.text;
-            return(responseCode, body);
-        }
+        // BaseService의 SendRequest 호출 (GET 방식, 기본 application/json 적용)
+        return await SendRequest(url, "GET");
     }
 
     public static async Task<(long, string)> GetPostsPublic(int page, int size, string sort = "")
     {
-        long responseCode = 404;
-        using (var request = UnityEngine.Networking.UnityWebRequest.Get($"{Utils.Settings.BaseUrl}/api/posts/public?page={page}&size={size}&sort={sort}"))
-        {
-            request.SetRequestHeader("Authorization", $"Bearer {JWTToken.Token}");
-            request.SetRequestHeader("accept", "application/json");
+        string url = $"{Utils.Settings.BaseUrl}/api/posts/public?page={page}&size={size}&sort={sort}";
 
-            await request.SendWebRequest();
-
-            responseCode = request.responseCode;
-
-            if (request.result != UnityWebRequest.Result.Success)
-            {
-                Debug.LogError($"Request Failed: {request.error} | Details: {request.downloadHandler.text}");
-                return (responseCode, string.Empty);
-            }
-
-            string body = request.downloadHandler.text;
-            return (responseCode, body);
-        }
+        return await SendRequest(url, "GET");
     }
 }
