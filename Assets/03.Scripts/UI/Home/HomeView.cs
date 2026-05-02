@@ -1,4 +1,5 @@
-﻿using TMPro;
+﻿using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -43,6 +44,24 @@ public class HomeView : MonoBehaviour
     [SerializeField] private Button _project1Button;
     [SerializeField] private Button _project2Button;
 
+    [Header("Side Bar")]
+    [SerializeField] private Button _openSidebarBtn;
+    [SerializeField] private Button _sidebarGoToAIRecommend;
+    [SerializeField] private Button _sidebarGoToGenerate3D;
+    [SerializeField] private Button _sidebarGoToARPlace;
+    [SerializeField] private Button _sidebarGoToGallery;
+    [SerializeField] private Button _sidebarGoToMyProjects;
+    [SerializeField] private Button _sidebarGoToCommunity;
+    [SerializeField] private Button _sidebarGoToRoomPlan3D;
+    [SerializeField] private Button _closeSidebarBtn;
+    [Space(10)]
+    [SerializeField] private GameObject _sidebarPannel;
+    [SerializeField] private Image _sidebarBlocker;
+    [SerializeField] private Transform _sidebarTransform;
+    [Space(10)]
+    [SerializeField] private float _sidebarAnimationDuration = 0.3f;
+    [SerializeField] private Color _sidebarBlockerColor;
+
     public Button Project1Button => _project1Button;
     public Button Project2Button => _project2Button;
 
@@ -59,6 +78,8 @@ public class HomeView : MonoBehaviour
         if(_toProjectsBtn2) _toProjectsBtn2.onClick.AddListener(_presenter.OnToProjectsClicked);
         if(_toCommunityBtn) _toCommunityBtn.onClick.AddListener(_presenter.OnToCommunityClicked);
         if(_toAIRecommendBtn) _toAIRecommendBtn.onClick.AddListener(_presenter.OnToAIRecommendClicked);
+        if(_openSidebarBtn) _openSidebarBtn.onClick.AddListener(OpenSidebar);
+        if(_closeSidebarBtn) _closeSidebarBtn.onClick.AddListener(CloseSidebar);
         _presenter.InitializeView();
     }
 
@@ -152,6 +173,62 @@ public class HomeView : MonoBehaviour
         if (_projectGallery2Text) _projectGallery2Text.text = text;
     }
 
+    #endregion
+    #region SideBar
+    public void OpenSidebar()
+    {
+        if (!_sidebarPannel || !_sidebarBlocker) return;
+
+        _sidebarBlocker.color = new Color(0, 0, 0, 0);
+        _sidebarBlocker.gameObject.SetActive(true);
+        _sidebarPannel.SetActive(true);
+
+        StartCoroutine(AniamteSidebar(true));
+        StartCoroutine(AnimateSidebarBlocker(true));
+    }
+
+    public void CloseSidebar()
+    {
+        if (!_sidebarPannel || !_sidebarBlocker) return;
+
+        StartCoroutine(AniamteSidebar(false));
+        StartCoroutine(AnimateSidebarBlocker(false));
+    }
+
+    private IEnumerator AniamteSidebar(bool open)
+    {
+        float elapsedTime = 0f;
+        Vector3 startScale = open ? new Vector3(0, 1, 1) : new Vector3(1,1,1);
+        Vector3 endScale = open ? new Vector3(1,1,1) : new Vector3(0,1,1);
+        while (elapsedTime < _sidebarAnimationDuration)
+        {
+            float t = elapsedTime / _sidebarAnimationDuration;
+            _sidebarTransform.localScale = Vector3.Lerp(startScale, endScale, t);
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+        _sidebarTransform.localScale = endScale;
+        if(!open)
+        {
+            _sidebarPannel.SetActive(false);
+            _sidebarBlocker.gameObject.SetActive(false);
+        }
+    }
+
+    private IEnumerator AnimateSidebarBlocker(bool open)
+    {
+        float elapsedTime = 0f;
+        Color startColor = open ? new Color(0, 0, 0, 0) : _sidebarBlockerColor;
+        Color endColor = open ? _sidebarBlockerColor : new Color(0, 0, 0, 0);
+        while (elapsedTime < _sidebarAnimationDuration)
+        {
+            float t = elapsedTime / _sidebarAnimationDuration;
+            _sidebarBlocker.color = Color.Lerp(startColor, endColor, t);
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+        _sidebarBlocker.color = endColor;
+    }
     #endregion
     //--- Private Methods ---//
 }
