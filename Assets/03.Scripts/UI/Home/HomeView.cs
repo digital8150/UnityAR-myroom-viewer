@@ -22,6 +22,18 @@ public class HomeView : MonoBehaviour
     private Button _toCommunityBtn;
     [SerializeField]
     private Button _toAIRecommendBtn;
+    [SerializeField]
+    private Button _toProjectGallery;
+    [SerializeField]
+    private Button _toRoomPlan3D;
+
+    [Header("ProjectGallery")]
+    [SerializeField] private Image _projectGallery1Thumbnail;
+    [SerializeField] private TextMeshProUGUI _projectGallery1Text;
+    [SerializeField] private Image _projectGallery2Thumbnail;
+    [SerializeField] private TextMeshProUGUI _projectGallery2Text;
+    [SerializeField] private Button _projectGallery1Button;
+    [SerializeField] private Button _projectGallery2Button;
 
     [Header("Recent Projects")]
     [SerializeField] private Image _project1Thumbnail;
@@ -62,6 +74,7 @@ public class HomeView : MonoBehaviour
     }
 
     //--- Public Methods ---//
+    #region Recent Projects
     public void SetProject1Thumbnail(Sprite thumbnail)
     {
         if (_project1Thumbnail)
@@ -99,5 +112,46 @@ public class HomeView : MonoBehaviour
     {
         if(_project2Text) _project2Text.text = text;
     }
+    #endregion
+    #region Project Gallery
+    public void SetProjectGallery1Thumbnail(Sprite thumbnail)
+    {
+        if (_projectGallery1Thumbnail)
+        {
+            _projectGallery1Thumbnail.sprite = thumbnail;
+            _projectGallery1Thumbnail.GetComponent<AspectRatioFitter>().aspectRatio = thumbnail.rect.width / thumbnail.rect.height;
+        }
+    }
+
+    public async void SetProjectGallery1Thumbnail(string imageUrl)
+    {
+        if (_projectGallery1Thumbnail) SetProjectGallery1Thumbnail(await Utils.ImageUtils.LoadSpriteFromUrlAsync(imageUrl));
+    }
+
+    public void SetProjectGallery2Thumbnail(Sprite thumbnail)
+    {
+        if (_projectGallery2Thumbnail)
+        {
+            _projectGallery2Thumbnail.sprite = thumbnail;
+            _projectGallery2Thumbnail.GetComponent<AspectRatioFitter>().aspectRatio = thumbnail.rect.width / thumbnail.rect.height;
+        }
+    }
+
+    public async void SetProjectGallery2Thumbnail(string imageUrl)
+    {
+        if (_projectGallery2Thumbnail) SetProjectGallery2Thumbnail(await Utils.ImageUtils.LoadSpriteFromUrlAsync(imageUrl));
+    }
+
+    public void SetProjectGallery1Text(string text)
+    {
+        if (_projectGallery1Text) _projectGallery1Text.text = text;
+    }
+
+    public void SetProjectGallery2Text(string text)
+    {
+        if (_projectGallery2Text) _projectGallery2Text.text = text;
+    }
+
+    #endregion
     //--- Private Methods ---//
 }
