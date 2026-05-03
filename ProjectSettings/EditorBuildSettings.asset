@@ -29,6 +29,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/01.Scenes/AIRecommend.unity
     guid: 283a22c36e6bda54a84e6148defb0d7f
+  - enabled: 1
+    path: Assets/01.Scenes/RoomPlan.unity
+    guid: 461fb41dccca8b046993306de0a945fe
+  - enabled: 1
+    path: Assets/01.Scenes/Gallery.unity
+    guid: 10ffc04bdc923e24eaed1e09b41e1427
   m_configObjects:
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: 24f29a8151320b147a009ff5491f7a22, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 289c1b55c9541489481df5cc06664110, type: 3}

@@ -45,6 +45,7 @@ public class HomeView : MonoBehaviour
     [SerializeField] private Button _project2Button;
 
     [Header("Side Bar")]
+    [SerializeField] private TextMeshProUGUI _userNameText;
     [SerializeField] private Button _openSidebarBtn;
     [SerializeField] private Button _sidebarGoToAIRecommend;
     [SerializeField] private Button _sidebarGoToGenerate3D;
@@ -64,6 +65,8 @@ public class HomeView : MonoBehaviour
 
     public Button Project1Button => _project1Button;
     public Button Project2Button => _project2Button;
+    public Button ProjectGallery1Button => _projectGallery1Button;
+    public Button ProjectGallery2Button => _projectGallery2Button;
 
     //--- Fields ---//
     private HomePresenter _presenter;
@@ -79,7 +82,18 @@ public class HomeView : MonoBehaviour
         if(_toCommunityBtn) _toCommunityBtn.onClick.AddListener(_presenter.OnToCommunityClicked);
         if(_toAIRecommendBtn) _toAIRecommendBtn.onClick.AddListener(_presenter.OnToAIRecommendClicked);
         if(_openSidebarBtn) _openSidebarBtn.onClick.AddListener(OpenSidebar);
-        if(_closeSidebarBtn) _closeSidebarBtn.onClick.AddListener(CloseSidebar);
+        if(_closeSidebarBtn) _closeSidebarBtn.onClick.AddListener(() => CloseSidebar());
+        if(_toProjectGallery) _toProjectGallery.onClick.AddListener(_presenter.OnGoToGalleryClicked);
+
+        // Sidebar GoTo Buttons
+        if (_sidebarGoToAIRecommend) _sidebarGoToAIRecommend.onClick.AddListener(_presenter.OnSidebarGoToAIRecommendClicked);
+        if(_sidebarGoToGenerate3D) _sidebarGoToGenerate3D.onClick.AddListener(_presenter.OnSidebarGoToGenerate3DClicked);
+        if(_sidebarGoToARPlace) _sidebarGoToARPlace.onClick.AddListener(_presenter.OnSidebarGoToARPlaceClicked);
+        if(_sidebarGoToGallery) _sidebarGoToGallery.onClick.AddListener(_presenter.OnGoToGalleryClicked);
+        if(_sidebarGoToMyProjects) _sidebarGoToMyProjects.onClick.AddListener(_presenter.OnSidebarGoToMyProjectsClicked);
+        if(_sidebarGoToCommunity) _sidebarGoToCommunity.onClick.AddListener(_presenter.OnSidebarGoToCommunityClicked);
+        if(_sidebarGoToRoomPlan3D) _sidebarGoToRoomPlan3D.onClick.AddListener(_presenter.OnSidebarGoToRoomPlan3DClicked);
+
         _presenter.InitializeView();
     }
 
@@ -187,12 +201,25 @@ public class HomeView : MonoBehaviour
         StartCoroutine(AnimateSidebarBlocker(true));
     }
 
-    public void CloseSidebar()
+    public void CloseSidebar(bool instant = false)
     {
         if (!_sidebarPannel || !_sidebarBlocker) return;
 
-        StartCoroutine(AniamteSidebar(false));
-        StartCoroutine(AnimateSidebarBlocker(false));
+        if (instant)
+        {
+            _sidebarPannel.SetActive(false);
+            _sidebarBlocker.gameObject.SetActive(false);
+        }
+        else
+        {
+            StartCoroutine(AniamteSidebar(false));
+            StartCoroutine(AnimateSidebarBlocker(false));
+        }
+    }
+
+    public void SetSideBarUserName(string userName)
+    {
+        if(_userNameText) _userNameText.text = userName;
     }
 
     private IEnumerator AniamteSidebar(bool open)

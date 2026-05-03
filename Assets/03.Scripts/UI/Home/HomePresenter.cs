@@ -10,6 +10,7 @@ public class HomePresenter
         _view = view;
     }
 
+    #region Main Navigation
     public void OnToGenerate3DClicked()
     {
         Debug.Log("Navigate to 3D Generation Scene");
@@ -33,14 +34,62 @@ public class HomePresenter
         Debug.Log("Navigate to AI Recommend Scene");
         Utils.SceneHistory.ChangeScene("AIRecommend");
     }
+    #endregion
 
-    public async void InitializeView()
+    #region Sidebar Navigation
+    public void OnSidebarGoToAIRecommendClicked()
     {
-        await LoadRecentProjects();
-        await LoadRecentGallery();
+        Debug.Log("Sidebar: Navigate to AI Recommend Scene");
+        Utils.SceneHistory.ChangeScene("AIRecommend");
     }
 
-    private async System.Threading.Tasks.Task LoadRecentProjects()
+    public void OnSidebarGoToGenerate3DClicked()
+    {
+        Debug.Log("Sidebar: Navigate to Generate3D Scene");
+        Utils.SceneHistory.ChangeScene("Generate3D");
+    }
+
+    public void OnSidebarGoToARPlaceClicked()
+    {
+        Debug.Log("Sidebar: Navigate to AR Place Scene");
+        Utils.SceneHistory.ChangeScene("ARPlace");
+    }
+
+    public void OnGoToGalleryClicked()
+    {
+        Debug.Log("Sidebar: Navigate to Projects Scene (Gallery)");
+        Utils.SceneHistory.ChangeScene("Gallery");
+    }
+
+    public void OnSidebarGoToMyProjectsClicked()
+    {
+        Debug.Log("Sidebar: Navigate to Projects Scene");
+        Utils.SceneHistory.ChangeScene("Projects");
+    }
+
+    public void OnSidebarGoToCommunityClicked()
+    {
+        Debug.Log("Sidebar: Navigate to Community Scene");
+        Utils.SceneHistory.ChangeScene("Community");
+    }
+
+    public void OnSidebarGoToRoomPlan3DClicked()
+    {
+        Debug.Log("Sidebar: Navigate to Generate3D Scene (Room Plan)");
+        Utils.SceneHistory.ChangeScene("RoomPlan");
+    }
+    #endregion
+
+    #region View Initialization
+    public async void InitializeView()
+    {
+        _view.CloseSidebar(instant:true);
+        LoadRecentProjects();
+        LoadRecentGallery();
+        SetUserNameSidebar();
+    }
+
+    private async void LoadRecentProjects()
     {
         var (responseCode, jsonBody) = await ProjectsService.GetMemberSearch(
             memberId:Int32.Parse(Utils.JWTUtils.GetUserId()),
@@ -69,7 +118,7 @@ public class HomePresenter
         }
     }
 
-    private async System.Threading.Tasks.Task LoadRecentGallery()
+    private async void LoadRecentGallery()
     {
         var (responseCode, jsonBody) = await GalleryService.GetSharedSearch(
             page: 0,
@@ -84,12 +133,15 @@ public class HomePresenter
                 ModelSearchResponse data = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelSearchResponse>(jsonBody);
                 _view.SetProjectGallery1Thumbnail(data.content[0].thumbnailUrl);
                 _view.SetProjectGallery1Text(data.content[0].name);
+                if (_view.ProjectGallery1Button) _view.ProjectGallery1Button.onClick.AddListener(() => OnGalleryItemClicked(data.content[0].id));
+
                 _view.SetProjectGallery2Thumbnail(data.content[1].thumbnailUrl);
                 _view.SetProjectGallery2Text(data.content[1].name);
+                if (_view.ProjectGallery2Button) _view.ProjectGallery2Button.onClick.AddListener(() => OnGalleryItemClicked(data.content[1].id));
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Error loading while get recent gallery items", _view);
+                Debug.LogError($"Error loading while get recent gallery items : {ex}", _view);
             }
         }
         else
@@ -98,10 +150,27 @@ public class HomePresenter
         }
     }
 
+    private async void SetUserNameSidebar()
+    {
+        int userId = int.Parse(Utils.JWTUtils.GetUserId());
+        var userName = await MemberService.GetMemberUsernameByMemberId(userId);
+        _view.SetSideBarUserName(userName);
+    }
+    #endregion
+
+    #region Callbacks
     private void OnProjectButtonClicked(int modelId)
     {
         Debug.Log($"[HomePresenter] Move to project Inspect view with modeId : {modelId}");
         ProjectInspectPresenter.SelectedModelId = modelId;
         Utils.SceneHistory.ChangeScene("ProjectInspect");
     }
+
+    private void OnGalleryItemClicked(int modelId)
+    {
+        Debug.Log($"[HomePresenter] Move to gallery with model ID: {modelId}");
+        GalleryPresenter.SelectedModelId = modelId;
+        Utils.SceneHistory.ChangeScene("Gallery");
+    }
+    #endregion
 }
