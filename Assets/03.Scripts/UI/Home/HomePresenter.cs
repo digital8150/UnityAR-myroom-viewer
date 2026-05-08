@@ -81,7 +81,7 @@ public class HomePresenter
     #endregion
 
     #region View Initialization
-    public async void InitializeView()
+    public void InitializeView()
     {
         _view.CloseSidebar(instant:true);
         LoadRecentProjects();
