@@ -1,6 +1,8 @@
 ﻿using Newtonsoft.Json;
 using System;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI.ProceduralImage;
 
 enum GalleryPage
 {
@@ -24,6 +26,9 @@ public class GalleryPresenter : IDisposable
     private bool _isLoading = false;
     private GalleryPage _currentPage = GalleryPage.List;
 
+    private string _sortBy = "createdAt,desc";
+    private string _filterByName = "";
+
     public GalleryPresenter(GalleryView view)
     {
         _view = view;
@@ -40,6 +45,7 @@ public class GalleryPresenter : IDisposable
     /// </summary>
     public void Initialize()
     {
+        _view.SetFilterPannelActive(false);
         _pageIndex = 0;
         _isLastPage = false;
         _isLoading = false;
@@ -74,7 +80,8 @@ public class GalleryPresenter : IDisposable
             var (responseCode, jsonBody) = await GalleryService.GetSharedSearch(
                 page: _pageIndex,
                 size: ITEMS_PER_PAGE,
-                sort: "createdAt,desc"
+                sort: _sortBy,
+                name: _filterByName
             );
 
             if (responseCode == 200 && !string.IsNullOrEmpty(jsonBody))
@@ -240,6 +247,48 @@ public class GalleryPresenter : IDisposable
                 }
                 break;
         }
+    }
+
+    public void OnShowFilterClicked()
+    {
+        _view.SetFilterPannelActive(true);
+    }
+
+    public void OnLatestButtonClicked(ProceduralImage image, TextMeshProUGUI text)
+    {
+        _view.SetActiveButtonColor(image, text);
+        _sortBy = "createdAt,desc";
+    }
+
+    public void OnOldestButtonClicked(ProceduralImage image, TextMeshProUGUI text)
+    {
+        _view.SetActiveButtonColor(image, text);
+        _sortBy = "createdAt,asc";
+    }
+
+    public void OnResetFilterButtonClicked()
+    {
+        _sortBy = "createdAt,desc";
+        _filterByName = "";
+        RefreshView();
+        _view.SetFilterPannelActive(false);
+        _view.SetNameFilterInput(string.Empty);
+    }
+
+    public void OnApplyFilterButtonClicked()
+    {
+        _filterByName = _view.GetNameFilterInput();
+        RefreshView();
+        _view.SetFilterPannelActive(false);
+    }
+
+    private void RefreshView()
+    {
+        _pageIndex = 0;
+        _isLastPage = false;
+        _isLoading = false;
+        _view.ClearGalleryItems();
+        LoadPage();
     }
     #endregion
 }

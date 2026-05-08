@@ -17,8 +17,7 @@ public class HomeView : MonoBehaviour
     private Button _toGenerate3DBtn2;
     [SerializeField]
     private Button _toProjectsBtn;
-    [SerializeField]
-    private Button _toProjectsBtn2;
+
     [SerializeField]
     private Button _toCommunityBtn;
     [SerializeField]
@@ -47,6 +46,7 @@ public class HomeView : MonoBehaviour
     [Header("Side Bar")]
     [SerializeField] private TextMeshProUGUI _userNameText;
     [SerializeField] private Button _openSidebarBtn;
+    [SerializeField] private Button _sidebarGoToMyPage;
     [SerializeField] private Button _sidebarGoToAIRecommend;
     [SerializeField] private Button _sidebarGoToGenerate3D;
     [SerializeField] private Button _sidebarGoToARPlace;
@@ -63,6 +63,11 @@ public class HomeView : MonoBehaviour
     [SerializeField] private float _sidebarAnimationDuration = 0.3f;
     [SerializeField] private Color _sidebarBlockerColor;
 
+    [Header("Navigation Bar")]
+    [SerializeField] private Button _homeButton;
+    [SerializeField] private Button _scanButton;
+    [SerializeField] private Button _myPageButton;
+    [SerializeField] private Button _toProjectsBtn2;
     public Button Project1Button => _project1Button;
     public Button Project2Button => _project2Button;
     public Button ProjectGallery1Button => _projectGallery1Button;
@@ -84,9 +89,11 @@ public class HomeView : MonoBehaviour
         if(_openSidebarBtn) _openSidebarBtn.onClick.AddListener(OpenSidebar);
         if(_closeSidebarBtn) _closeSidebarBtn.onClick.AddListener(() => CloseSidebar());
         if(_toProjectGallery) _toProjectGallery.onClick.AddListener(_presenter.OnGoToGalleryClicked);
+        if(_myPageButton) _myPageButton.onClick.AddListener(_presenter.OnToMyPageClicked);
 
         // Sidebar GoTo Buttons
         if (_sidebarGoToAIRecommend) _sidebarGoToAIRecommend.onClick.AddListener(_presenter.OnSidebarGoToAIRecommendClicked);
+        if (_sidebarGoToMyPage) _sidebarGoToMyPage.onClick.AddListener(_presenter.OnToMyPageClicked);
         if(_sidebarGoToGenerate3D) _sidebarGoToGenerate3D.onClick.AddListener(_presenter.OnSidebarGoToGenerate3DClicked);
         if(_sidebarGoToARPlace) _sidebarGoToARPlace.onClick.AddListener(_presenter.OnSidebarGoToARPlaceClicked);
         if(_sidebarGoToGallery) _sidebarGoToGallery.onClick.AddListener(_presenter.OnGoToGalleryClicked);

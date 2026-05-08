@@ -34,6 +34,12 @@ public class HomePresenter
         Debug.Log("Navigate to AI Recommend Scene");
         Utils.SceneHistory.ChangeScene("AIRecommend");
     }
+
+    public void OnToMyPageClicked()
+    {
+        Debug.Log("Navigate to My Page Scene");
+        Utils.SceneHistory.ChangeScene("MyPage");
+    }
     #endregion
 
     #region Sidebar Navigation

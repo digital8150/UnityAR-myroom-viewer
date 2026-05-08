@@ -1,7 +1,9 @@
 ﻿using Newtonsoft.Json;
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI.ProceduralImage;
 
 public class ProjectsPresenter : IDisposable
 {
@@ -12,13 +14,50 @@ public class ProjectsPresenter : IDisposable
     private bool _isLastPage = false;
     private bool _isLoading = false;
     private string _sortBy = "id";
+    private string _filterByName = "";
 
     public ProjectsPresenter(ProjectsView view)
     {
         _view = view;
+        _view.SetFilterPannelActive(false);
         WebsocketController.Instance.OnModel3DGenerated += HandleModelGenerated;
         WebsocketController.Instance.OnModel3DGenerateFailed += HandleModelGenerated;
     }
+
+    #region Button Handlers
+    public void OnShowFilterClicked()
+    {
+        _view.SetFilterPannelActive(true);
+    }
+
+    public void OnLatestButtonClicked(ProceduralImage image, TextMeshProUGUI text)
+    {
+        _view.SetActiveButtonColor(image, text);
+        _sortBy = "createdAt,desc";
+    }
+
+    public void OnOldestButtonClicked(ProceduralImage image, TextMeshProUGUI text)
+    {
+        _view.SetActiveButtonColor(image, text);
+        _sortBy = "createdAt,asc";
+    }
+
+    public void OnResetFilterButtonClicked()
+    {
+        _sortBy = "createdAt,desc";
+        _filterByName = "";
+        RefreshView();
+        _view.SetFilterPannelActive(false);
+        _view.SetNameFilterInput(string.Empty);
+    }
+
+    public void OnApplyFilterButtonClicked()
+    {
+        _filterByName = _view.GetNameFilterInput();
+        RefreshView();
+        _view.SetFilterPannelActive(false);
+    }
+    #endregion
 
     public void Dispose()
     {
@@ -43,7 +82,7 @@ public class ProjectsPresenter : IDisposable
         string jsonBody;
 
         (responseCode, jsonBody) = await ProjectsService.GetMemberSearch(
-            Int32.Parse(Utils.JWTUtils.GetUserId()), _pageIndex, VIEW_PER_PAGE, sort:_sortBy);
+            Int32.Parse(Utils.JWTUtils.GetUserId()), _pageIndex, VIEW_PER_PAGE, sort:_sortBy, name: _filterByName);
 
         if (responseCode == 200 && !string.IsNullOrEmpty(jsonBody))
         {

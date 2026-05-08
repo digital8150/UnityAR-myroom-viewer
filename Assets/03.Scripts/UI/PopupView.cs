@@ -83,6 +83,10 @@ public class PopupView : MonoBehaviour
     [Header("Loading Spinner Settings")]
     [SerializeField] private float _spinnerRotationSpeed = 360f; // 초당 회전 속도
 
+    [Header("Keyboard Helper")]
+    [SerializeField] private GameObject _keyboardHelperBG;
+    [SerializeField] private TextMeshProUGUI _keyboardHelperText;
+
     private static bool _isShowingPopup = false;
 
     private PopupPresenter _presenter;
@@ -111,6 +115,7 @@ public class PopupView : MonoBehaviour
     {
         CloseMessage();
         SetLoadingPannelActive(false);
+        SetKeyboardHelperActive(false);
         ShowPopupAt(100, new PopupContext());
         WebsocketController.Instance.OnModel3DGenerated += GenerationSuccess;
         WebsocketController.Instance.OnModel3DGenerateFailed += GenerationFailed;
@@ -214,6 +219,30 @@ public class PopupView : MonoBehaviour
         if(_loadingPanel)
         {
             _loadingPanel.SetActive(active);
+        }
+    }
+
+    public void SetKeyboardHelperActive(bool active)
+    {
+        if(_keyboardHelperBG)
+        {
+            _keyboardHelperBG.SetActive(active);
+        }
+        else
+        {
+            Debug.LogError("PopupView: SetKeyboardHelperActive - Keyboard Helper BG is not assigned in the inspector.");
+        }
+    }
+
+    public void SetKeyboardHelperContent(string content)
+    {
+        if(_keyboardHelperText)
+        {
+            _keyboardHelperText.text = content;
+        }
+        else
+        {
+            Debug.LogError("PopupView: SetKeyboardHelperContent - Keyboard Helper Text is not assigned in the inspector.");
         }
     }
 

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using UnityEngine.UI.ProceduralImage;
 
 public class ProjectsView : MonoBehaviour
 {
@@ -22,13 +24,34 @@ public class ProjectsView : MonoBehaviour
     [SerializeField]
     private Button _toGenerate3DButton;
 
+    [Header("Filter")]
+    [SerializeField] private GameObject _filterPanel;
+    [SerializeField] private Button _showFilter;
+    [SerializeField] private Button _latestButton;
+    [SerializeField] private ProceduralImage _latestButtonImage;
+    [SerializeField] private TextMeshProUGUI _latestButtonText;
+    [SerializeField] private Button _oldestButton;
+    [SerializeField] private ProceduralImage _oldestButtonImage;
+    [SerializeField] private TextMeshProUGUI _oldestButtonText;
+    [SerializeField] private Button _resetFilterButton;
+    [SerializeField] private Button _applyFilterButton;
+    [SerializeField] private TMP_InputField _nameFilterInput;
+    [SerializeField] private Color _buttonActiveColor;
+
     private List<ViewSlotsView> _slotsViewList;
     private ProjectsPresenter _presenter;
 
+    #region Unity Lifecycle
     private void Awake()
     {
         _slotsViewList = new List<ViewSlotsView>();
         _presenter = new ProjectsPresenter(this);
+
+        if(_showFilter) _showFilter.onClick.AddListener(_presenter.OnShowFilterClicked);
+        if(_latestButton) _latestButton.onClick.AddListener(() => _presenter.OnLatestButtonClicked(_latestButtonImage, _latestButtonText));
+        if(_oldestButton) _oldestButton.onClick.AddListener(() => _presenter.OnOldestButtonClicked(_oldestButtonImage, _oldestButtonText));
+        if(_resetFilterButton) _resetFilterButton.onClick.AddListener(_presenter.OnResetFilterButtonClicked);
+        if(_applyFilterButton) _applyFilterButton.onClick.AddListener(_presenter.OnApplyFilterButtonClicked);
     }
 
     private void Start()
@@ -58,6 +81,58 @@ public class ProjectsView : MonoBehaviour
         {
             _presenter.Dispose();
         }
+
+        if (_showFilter) _showFilter.onClick.RemoveAllListeners();
+        if (_latestButton) _latestButton.onClick.RemoveAllListeners();
+        if (_oldestButton) _oldestButton.onClick.RemoveAllListeners();
+        if (_resetFilterButton) _resetFilterButton.onClick.RemoveAllListeners();
+        if (_applyFilterButton) _applyFilterButton.onClick.RemoveAllListeners();
+    }
+    #endregion
+
+    public string GetNameFilterInput()
+    {
+        if(_nameFilterInput == null)
+        {
+            Debug.LogError($"[ProjectsView.cs] Name Filter Input is not assigned.", this);
+            return string.Empty;
+        }
+        return _nameFilterInput.text;
+    }
+
+    public void SetNameFilterInput(string text)
+    {
+        if(_nameFilterInput == null)
+        {
+            Debug.LogError($"[ProjectsView.cs] Name Filter Input is not assigned.", this);
+            return;
+        }
+        _nameFilterInput.text = text;
+    }
+
+    public void SetActiveButtonColor(ProceduralImage image, TextMeshProUGUI text)
+    {
+        if (!image || !text || !_latestButtonImage || !_latestButtonText || !_oldestButtonImage || !_oldestButtonText)
+        {
+            Debug.LogError($"[ProjectView.cs] Something was null when updating Active Button Color");
+            return;
+        }
+
+        // Reset all buttons to default color
+        _latestButtonImage.color = Color.white;
+        _latestButtonText.color = Color.black;
+        _oldestButtonImage.color = Color.white;
+        _oldestButtonText.color = Color.black;
+        
+        // Set the active button color
+        image.color = _buttonActiveColor;
+        text.color = Color.white;
+    }
+
+    public void SetFilterPannelActive(bool isActive)
+    {
+        if(_filterPanel) _filterPanel.SetActive(isActive);
+        else Debug.LogError($"[ProjectsView.cs] Filter Panel is not assigned.", this);
     }
 
     /// <summary>
