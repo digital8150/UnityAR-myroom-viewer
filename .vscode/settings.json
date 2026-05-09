@@ -56,5 +56,6 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "UnityAR-myroom-viewer.slnx"
+    "dotnet.defaultSolution": "UnityAR-myroom-viewer.slnx",
+    "dotnet.preferCSharpExtension": true
 }

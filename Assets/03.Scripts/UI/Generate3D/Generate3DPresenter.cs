@@ -1,12 +1,16 @@
-﻿using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class Generate3DPresenter
 {
+    private const int MaxImages = 4;
+
     private readonly Generate3DView _view;
-    private string _imagePath = null;
-    private ModelGenerationResponse _generated3DModel;
-    private bool _isTakenPicture = false;
+    private readonly string[] _imagePaths = new string[MaxImages];
+    private bool _isCameraMode = false;
+
     public static int GenerateProcessingModelID = -1;
 
     public Generate3DPresenter(Generate3DView view)
@@ -19,7 +23,39 @@ public class Generate3DPresenter
         Utils.SceneHistory.BackToPrevious();
     }
 
-    public void OnLoadImageClicked()
+    public void OnEnterImageSelectionClicked()
+    {
+        _isCameraMode = false;
+        ResetSlots();
+        _view.ShowImageSelectionPage();
+    }
+
+    public void OnTakePictureClicked()
+    {
+        _isCameraMode = true;
+        ResetSlots();
+        _view.ShowImageSelectionPage();
+    }
+
+    public void OnBackToLandingClicked()
+    {
+        ResetSlots();
+        _view.ShowLandingPage();
+    }
+
+    public void OnAddImageClicked(int slotIndex)
+    {
+        if (_isCameraMode)
+        {
+            TakePictureForSlot(slotIndex);
+        }
+        else
+        {
+            PickFileForSlot(slotIndex);
+        }
+    }
+
+    private void PickFileForSlot(int slotIndex)
     {
         if (NativeFilePicker.IsFilePickerBusy())
         {
@@ -31,22 +67,17 @@ public class Generate3DPresenter
         {
             NativeFilePicker.PickFile((path) =>
             {
-                if (path == null)
-                {
-                   
-                }
-                else if (!IsValidFileExtensioin(path))
+                if (path == null) return;
+
+                if (!IsValidFileExtension(path))
                 {
                     PopupView.Instance.ShowMessage("유효하지 않은 파일 형식입니다. PNG, JPG, JPEG 파일만 선택해주세요.");
+                    return;
                 }
-                else
-                {
-                    //선택 완료 이후 로직
-                    Debug.Log($"선택된 파일 경로: {path}");
-                    _imagePath = path;
-                    _isTakenPicture = false;
-                    PopupView.Instance.Presenter.ShowYesNo("선택한 이미지를 3D 모델로 변환하시겠습니까?", OnUserConfirmedGeneration, OnUserDeniedGeneration);
-                }
+
+                _imagePaths[slotIndex] = path;
+                _ = LoadAndShowPreviewAsync(slotIndex, path);
+                RefreshGenerateButton();
             });
         }
         catch (System.Exception e)
@@ -55,43 +86,116 @@ public class Generate3DPresenter
         }
     }
 
-    public void OnTakePictureClicked()
+    private void TakePictureForSlot(int slotIndex)
     {
-        NativeCamera.TakePicture((path) =>
+        if (!NativeCamera.IsCameraBusy())
         {
-            if (path != null)
+            NativeCamera.TakePicture((path) =>
             {
-                _isTakenPicture = true;
-                _imagePath = path;
-                PopupView.Instance.Presenter.ShowYesNo(
-                    "선택한 이미지를 3D 모델로 변환하시겠습니까?",
-                    OnUserConfirmedGeneration,
-                    OnUserDeniedGeneration);
-            }
-        });
+                if (path == null) return;
+
+                _imagePaths[slotIndex] = path;
+                _ = LoadCameraPreviewAsync(slotIndex, path);
+                RefreshGenerateButton();
+            }, maxSize: 2048);
+        }
+        else
+        {
+            PopupView.Instance.ShowMessage("카메라가 현재 사용 중입니다. 잠시 후 다시 시도해주세요.");
+        }
     }
 
-    //--- Private Methods ---//
-    private bool IsValidFileExtensioin(string path)
+    public void OnRemoveImageClicked(int slotIndex)
+    {
+        _imagePaths[slotIndex] = null;
+        _view.ClearSlotPreview(slotIndex);
+        RefreshGenerateButton();
+    }
+
+    public void OnGenerateClicked()
+    {
+        PopupView.Instance.Presenter.ShowYesNo(
+            "선택한 이미지를 3D 모델로 변환하시겠습니까?",
+            OnUserConfirmedGeneration,
+            OnUserDeniedGeneration);
+    }
+
+    private bool IsValidFileExtension(string path)
     {
         string lowerPath = path.ToLower();
         return lowerPath.EndsWith(".png") || lowerPath.EndsWith(".jpg") || lowerPath.EndsWith(".jpeg");
     }
 
+    private async Task LoadAndShowPreviewAsync(int slotIndex, string path)
+    {
+        byte[] bytes = await File.ReadAllBytesAsync(path);
+        var texture = new Texture2D(2, 2);
+        if (texture.LoadImage(bytes))
+            _view.SetSlotPreview(slotIndex, texture);
+        else
+            Object.Destroy(texture);
+    }
+
+    private async Task LoadCameraPreviewAsync(int slotIndex, string path)
+    {
+        await Task.Yield();
+        Texture2D texture = NativeCamera.LoadImageAtPath(path, maxSize: 1024, markTextureNonReadable: false);
+        if (texture != null)
+            _view.SetSlotPreview(slotIndex, texture);
+    }
+
+    private void ResetSlots()
+    {
+        for (int i = 0; i < MaxImages; i++)
+        {
+            _imagePaths[i] = null;
+            _view.ClearSlotPreview(i);
+        }
+        _view.SetGenerateButtonInteractable(false);
+    }
+
+    private void RefreshGenerateButton()
+    {
+        foreach (var path in _imagePaths)
+        {
+            if (!string.IsNullOrEmpty(path))
+            {
+                _view.SetGenerateButtonInteractable(true);
+                return;
+            }
+        }
+        _view.SetGenerateButtonInteractable(false);
+    }
+
     private async void OnUserConfirmedGeneration()
     {
+        var validPaths = new List<string>();
+        foreach (var path in _imagePaths)
+            if (!string.IsNullOrEmpty(path)) validPaths.Add(path);
+
         PopupView.Instance.SetLoadingPannelActive(true);
-        Debug.Log("User confirmed model generation");
         long resultCode;
-        (resultCode, GenerateProcessingModelID) = await Generate3DService.PostUpload(_imagePath, furniture_type:"temp", name:"내 가구", isShared:false, isTakenPicture:_isTakenPicture); // 임시 가구 업로드
-        Debug.Log($"Upload request response code : {resultCode}");
-        if(resultCode != 200)
+
+        if (validPaths.Count == 1)
+        {
+            (resultCode, GenerateProcessingModelID) = await Generate3DService.PostUpload(
+                validPaths[0], furniture_type: "temp", name: "내 가구", isShared: false, isTakenPicture: _isCameraMode);
+        }
+        else
+        {
+            (resultCode, GenerateProcessingModelID) = await Generate3DService.PostUploadMulti(
+                validPaths, furniture_type: "temp", name: "내 가구", isShared: false, isTakenPicture: _isCameraMode);
+        }
+
+        Debug.Log($"Upload request response code: {resultCode}");
+        if (resultCode != 200)
         {
             PopupView.Instance.ShowMessage("이미지 업로드 중 오류가 발생했습니다");
-            Debug.LogError($"[Generate3DPresenter.cs] Something went wrong while uploading image!! responseCode : {resultCode} response modelId : {GenerateProcessingModelID}");
+            Debug.LogError($"[Generate3DPresenter] Upload failed. responseCode: {resultCode}, modelId: {GenerateProcessingModelID}");
             PopupView.Instance.SetLoadingPannelActive(false);
             return;
         }
+
         Utils.SceneHistory.ChangeScene("Projects");
         PopupView.Instance.SetLoadingPannelActive(false);
     }
@@ -99,6 +203,5 @@ public class Generate3DPresenter
     private void OnUserDeniedGeneration()
     {
         Debug.Log("사용자가 3D 모델 생성을 거부했습니다.");
-        _imagePath = null;
     }
 }

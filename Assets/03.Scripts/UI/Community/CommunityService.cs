@@ -1,77 +1,192 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using UnityEngine;
 
-[Serializable]
-public class PostResponse
-{
-    public List<PostContent> content;
-    public bool empty;
-    public bool first;
-    public bool last;
-    public int number;
-    public int numberOfElements;
-    public Pageable pageable;
-    public int size;
-    public Sort sort;
-    public int totalElements;
-    public int totalPages;
-}
-
-[Serializable]
-public class PostContent
-{
-    public int id;
-    public int memberId;
-    public string memberName;
-    public int? model3dId; // null 허용
-    public string model3dName;
-    public string imageUrl;
-    public string title;
-    public string content;
-    public string category; // Enum 처리 권장 (QUESTION, REVIEW, FURNITURE 등)
-    public string visibilityScope;
-    public int viewCount;
-    public int likeCount;
-    public int commentCount;
-    public string createdAt;
-    public string updatedAt;
-}
-
-[Serializable]
-public class Pageable
-{
-    public int offset;
-    public int pageNumber;
-    public int pageSize;
-    public bool paged;
-    public Sort sort;
-    public bool unpaged;
-}
-
-[Serializable]
-public class Sort
-{
-    public bool empty;
-    public bool sorted;
-    public bool unsorted;
-}
-
-// BaseService를 상속받아 중복 코드 완벽 제거!
 public class CommunityService : BaseService
 {
+    /// <summary>
+    /// Fetches a single post by its ID.
+    /// </summary>
+    /// <param name="postId">The ID of the post to retrieve.</param>
+    /// <returns>HTTP status code and response body.</returns>
     public static async Task<(long, string)> GetPostById(int postId)
     {
         string url = $"{Utils.Settings.BaseUrl}/api/posts/{postId}";
-
-        // BaseService의 SendRequest 호출 (GET 방식, 기본 application/json 적용)
         return await SendRequest(url, "GET");
     }
 
-    public static async Task<(long, string)> GetPostsPublic(int page, int size, string sort = "")
+    /// <summary>
+    /// Searches posts with pagination and optional filters.
+    /// </summary>
+    /// <param name="page">Zero-based page index.</param>
+    /// <param name="size">Number of posts per page.</param>
+    /// <param name="sort">Sort order (e.g. "latest", "popular").</param>
+    /// <param name="title">Filter by post title keyword.</param>
+    /// <param name="category">Filter by category name.</param>
+    /// <param name="myPost">When true, returns only posts by the current user.</param>
+    /// <returns>HTTP status code and response body.</returns>
+    public static async Task<(long, string)> GetPostsSearch(int page, int size, string sort = "", string title = "", string category = "", bool myPost = false)
     {
-        string url = $"{Utils.Settings.BaseUrl}/api/posts/public?page={page}&size={size}&sort={sort}";
-
+        string url = $"{Utils.Settings.BaseUrl}/api/posts/search?page={page}&size={size}&sort={sort}&title={title}&category={category}&myPost={myPost}";
         return await SendRequest(url, "GET");
+    }
+
+    /// <summary>
+    /// Creates a new community post, optionally attaching up to 4 images and a 3D model reference.
+    /// </summary>
+    /// <param name="title">Post title.</param>
+    /// <param name="content">Post body text.</param>
+    /// <param name="category">Post category identifier.</param>
+    /// <param name="visibilityScope">Visibility setting (e.g. "PUBLIC", "PRIVATE").</param>
+    /// <param name="model3dId">Optional ID of an associated 3D model.</param>
+    /// <param name="images">Optional list of image byte arrays (max 4).</param>
+    /// <param name="imageFileNames">File names corresponding to each image in <paramref name="images"/>.</param>
+    /// <returns>HTTP status code and response body.</returns>
+    public static async Task<(long, string)> CreatePost(
+        string title, string content, string category, string visibilityScope,
+        int? model3dId = null, List<byte[]> images = null, List<string> imageFileNames = null)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/posts" +
+            $"?title={Uri.EscapeDataString(title)}" +
+            $"&content={Uri.EscapeDataString(content)}" +
+            $"&category={category}" +
+            $"&visibility_scope={visibilityScope}";
+
+        if (model3dId.HasValue)
+            url += $"&model3d_id={model3dId.Value}";
+
+        if (images != null && images.Count > 0)
+        {
+            var form = new WWWForm();
+            int count = Math.Min(images.Count, 4);
+            for (int i = 0; i < count; i++)
+            {
+                string fileName = imageFileNames != null && i < imageFileNames.Count ? imageFileNames[i] : $"image_{i}.jpg";
+                form.AddBinaryData("images", images[i], fileName, "image/jpeg");
+            }
+            return await SendRequest(url, "POST", form, accept: "*/*");
+        }
+
+        return await SendRequest(url, "POST");
+    }
+
+    /// <summary>
+    /// Adds a like from the current user to the specified post.
+    /// </summary>
+    /// <param name="postId">The ID of the post to like.</param>
+    /// <returns>HTTP status code and response body.</returns>
+    public static async Task<(long, string)> LikePost(int postId)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/posts/{postId}/likes";
+        return await SendRequest(url, "POST");
+    }
+
+    /// <summary>
+    /// Removes the current user's like from the specified post.
+    /// </summary>
+    /// <param name="postId">The ID of the post to unlike.</param>
+    /// <returns>HTTP status code and response body.</returns>
+    public static async Task<(long, string)> UnlikePost(int postId)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/posts/{postId}/likes";
+        return await SendRequest(url, "DELETE");
+    }
+
+    /// <summary>
+    /// Deletes the post with the given ID.
+    /// </summary>
+    /// <param name="postId">The ID of the post to delete.</param>
+    /// <returns>HTTP status code and response body.</returns>
+    public static async Task<(long, string)> DeletePost(int postId)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/posts/{postId}";
+        return await SendRequest(url, "DELETE");
+    }
+
+    /// <summary>
+    /// Updates an existing post. Existing images not listed in <paramref name="retainImageUrls"/> are removed.
+    /// New images can be supplied alongside retained ones (combined max 4).
+    /// </summary>
+    /// <param name="postId">The ID of the post to update.</param>
+    /// <param name="title">New post title.</param>
+    /// <param name="content">New post body text.</param>
+    /// <param name="category">New category identifier.</param>
+    /// <param name="visibilityScope">New visibility setting.</param>
+    /// <param name="model3dId">Optional updated 3D model reference ID.</param>
+    /// <param name="retainImageUrls">URLs of existing images to keep after the update.</param>
+    /// <param name="images">New image byte arrays to upload (max 4 total with retained).</param>
+    /// <param name="imageFileNames">File names corresponding to each entry in <paramref name="images"/>.</param>
+    /// <returns>HTTP status code and response body.</returns>
+    public static async Task<(long, string)> UpdatePost(
+        int postId, string title, string content, string category, string visibilityScope,
+        int? model3dId = null, List<string> retainImageUrls = null, List<byte[]> images = null, List<string> imageFileNames = null)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/posts/{postId}" +
+            $"?title={Uri.EscapeDataString(title)}" +
+            $"&content={Uri.EscapeDataString(content)}" +
+            $"&category={category}" +
+            $"&visibility_scope={visibilityScope}";
+
+        if (model3dId.HasValue)
+            url += $"&model3d_id={model3dId.Value}";
+
+        if (retainImageUrls != null)
+            foreach (var imageUrl in retainImageUrls)
+                url += $"&retain_image_urls={Uri.EscapeDataString(imageUrl)}";
+
+        if (images != null && images.Count > 0)
+        {
+            var form = new WWWForm();
+            int count = Math.Min(images.Count, 4);
+            for (int i = 0; i < count; i++)
+            {
+                string fileName = imageFileNames != null && i < imageFileNames.Count ? imageFileNames[i] : $"image_{i}.jpg";
+                form.AddBinaryData("images", images[i], fileName, "image/jpeg");
+            }
+            return await SendRequest(url, "PUT", form, accept: "*/*");
+        }
+
+        return await SendRequest(url, "PUT");
+    }
+
+    /// <summary>
+    /// Creates a comment on a post, optionally as a reply to an existing comment.
+    /// </summary>
+    /// <param name="postId">The ID of the post to comment on.</param>
+    /// <param name="content">Comment text.</param>
+    /// <param name="parentCommentId">ID of the parent comment when creating a reply; null for top-level comments.</param>
+    /// <returns>HTTP status code and response body.</returns>
+    public static async Task<(long, string)> CreateComment(int postId, string content, int? parentCommentId = null)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/comments";
+        string json = parentCommentId.HasValue
+            ? JsonUtility.ToJson(new CreateCommentWithParentRequest { post_id = postId, content = content, parent_comment_id = parentCommentId.Value })
+            : JsonUtility.ToJson(new CreateCommentRequest { post_id = postId, content = content });
+        return await SendRequest(url, "POST", jsonPayload: json);
+    }
+
+    /// <summary>
+    /// Deletes the comment with the given ID.
+    /// </summary>
+    /// <param name="commentId">The ID of the comment to delete.</param>
+    /// <returns>HTTP status code and response body.</returns>
+    public static async Task<(long, string)> DeleteComment(int commentId)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/comments/{commentId}";
+        return await SendRequest(url, "DELETE");
+    }
+
+    /// <summary>
+    /// Updates the text of an existing comment.
+    /// </summary>
+    /// <param name="commentId">The ID of the comment to update.</param>
+    /// <param name="content">New comment text.</param>
+    /// <returns>HTTP status code and response body.</returns>
+    public static async Task<(long, string)> UpdateComment(int commentId, string content)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/comments/{commentId}";
+        var body = new UpdateCommentRequest { content = content };
+        return await SendRequest(url, "PUT", jsonPayload: JsonUtility.ToJson(body));
     }
 }

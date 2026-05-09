@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System.Collections.Generic;
 using System;
+using System.IO;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using Utils;
@@ -20,15 +21,31 @@ public class CommunityPresenter
     private float _startOffset = 10f;
     private bool _refreshTriggered = false;
     private bool _isShowingDetails = false;
+    private bool _isShowingNewPost = false;
+
+    private int _selectedCategoryIndex = -1;
+    private string _selectedScope = "PUBLIC";
+    private List<byte[]> _selectedImageBytes = new List<byte[]>();
+    private List<string> _selectedImageFileNames = new List<string>();
+    private List<CommunityAddPictureButton> _pictureButtons = new List<CommunityAddPictureButton>();
+
+    private static readonly string[] CategoryApiValues = { "QUESTION", "REVIEW", "FURNITURE", "INTERIOR", "ETC" };
 
     public CommunityPresenter(CommunityView view, PostView postView)
     {
         _view = view;
         _postView = postView;
+        _postView.SetGoToListAction(OnReturnButtonClicked);
     }
 
     public void OnReturnButtonClicked()
     {
+        if (_isShowingNewPost)
+        {
+            CloseNewPostPanel();
+            return;
+        }
+
         if (_isShowingDetails)
         {
             _isShowingDetails = false;
@@ -37,6 +54,131 @@ public class CommunityPresenter
         }
 
         SceneHistory.BackToPrevious();
+    }
+
+    public void OnWritePostButtonClicked()
+    {
+        _isShowingNewPost = true;
+        _view.ShowNewPostPanel();
+        SpawnEmptyPictureButton();
+    }
+
+    public void OnCategorySelected(int index)
+    {
+        _selectedCategoryIndex = index;
+        _view.UpdateCategoryVisual(index);
+    }
+
+    public void OnScopeSelected(string scope)
+    {
+        _selectedScope = scope;
+    }
+
+    public async void OnSubmitNewPostButtonClicked()
+    {
+        string title = _view.GetPostTitle();
+        string content = _view.GetPostContent();
+        if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(content) || _selectedCategoryIndex < 0)
+            return;
+
+        string category = CategoryApiValues[_selectedCategoryIndex];
+        string scope = _view.GetSelectedScope();
+
+        (long code, _) = await CommunityService.CreatePost(
+            title, content, category, scope,
+            images: _selectedImageBytes.Count > 0 ? _selectedImageBytes : null,
+            imageFileNames: _selectedImageFileNames.Count > 0 ? _selectedImageFileNames : null
+        );
+
+        if (code == 200 || code == 201)
+        {
+            CloseNewPostPanel();
+            RefreshPosts();
+        }
+    }
+
+    private void CloseNewPostPanel()
+    {
+        _isShowingNewPost = false;
+        _view.HideNewPostPanel();
+        _view.ResetNewPostForm();
+
+        foreach (var btn in _pictureButtons)
+            if (btn != null) GameObject.Destroy(btn.gameObject);
+        _pictureButtons.Clear();
+        _selectedImageBytes.Clear();
+        _selectedImageFileNames.Clear();
+        _selectedCategoryIndex = -1;
+        _selectedScope = "PUBLIC";
+    }
+
+    private void SpawnEmptyPictureButton()
+    {
+        var btn = _view.SpawnAddPictureButton();
+        _pictureButtons.Add(btn);
+        btn.EmptyState.SetActive(true);
+        btn.FilledState.SetActive(false);
+        btn.AddPictureButton.onClick.AddListener(() => OnAddPictureClicked(btn));
+    }
+
+    private void OnAddPictureClicked(CommunityAddPictureButton btn)
+    {
+        if (NativeFilePicker.IsFilePickerBusy()) return;
+
+        NativeFilePicker.PickFile(path =>
+        {
+            if (string.IsNullOrEmpty(path)) return;
+
+            byte[] bytes = File.ReadAllBytes(path);
+            string fileName = Path.GetFileName(path);
+
+            _selectedImageBytes.Add(bytes);
+            _selectedImageFileNames.Add(fileName);
+
+            Texture2D tex = new Texture2D(2, 2);
+            tex.LoadImage(bytes);
+            btn.ShowingImage.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), Vector2.one * 0.5f);
+            btn.EmptyState.SetActive(false);
+            btn.FilledState.SetActive(true);
+            btn.AddPictureButton.onClick.RemoveAllListeners();
+            btn.RemovePictureButton.onClick.AddListener(() => OnRemovePictureClicked(btn));
+
+            if (_selectedImageBytes.Count < 4)
+                SpawnEmptyPictureButton();
+        }, new string[] { "image/*" });
+    }
+
+    private void OnRemovePictureClicked(CommunityAddPictureButton btn)
+    {
+        int index = _pictureButtons.IndexOf(btn);
+        if (index < 0 || index >= _selectedImageBytes.Count) return;
+
+        _selectedImageBytes.RemoveAt(index);
+        _selectedImageFileNames.RemoveAt(index);
+        RebuildPictureButtons();
+    }
+
+    private void RebuildPictureButtons()
+    {
+        foreach (var b in _pictureButtons)
+            if (b != null) GameObject.Destroy(b.gameObject);
+        _pictureButtons.Clear();
+
+        for (int i = 0; i < _selectedImageBytes.Count; i++)
+        {
+            var btn = _view.SpawnAddPictureButton();
+            _pictureButtons.Add(btn);
+            int idx = i;
+            Texture2D tex = new Texture2D(2, 2);
+            tex.LoadImage(_selectedImageBytes[idx]);
+            btn.ShowingImage.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), Vector2.one * 0.5f);
+            btn.EmptyState.SetActive(false);
+            btn.FilledState.SetActive(true);
+            btn.RemovePictureButton.onClick.AddListener(() => OnRemovePictureClicked(btn));
+        }
+
+        if (_selectedImageBytes.Count < 4)
+            SpawnEmptyPictureButton();
     }
 
     public void OnScrollChanged(Vector2 pos)
@@ -83,7 +225,7 @@ public class CommunityPresenter
         long responseCode;
         string jsonBody;
 
-        (responseCode, jsonBody) = await CommunityService.GetPostsPublic(_pageIndex, VIEW_PER_PAGE, _sortBy);
+        (responseCode, jsonBody) = await CommunityService.GetPostsSearch(_pageIndex, VIEW_PER_PAGE, _sortBy);
 
         if (responseCode == 200 && !string.IsNullOrEmpty(jsonBody))
         {

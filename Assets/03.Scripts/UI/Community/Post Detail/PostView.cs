@@ -61,6 +61,12 @@ public class PostView : MonoBehaviour
         else _profilePicture.sprite = _defaultProfilePic;
     }
 
+    public void SetGoToListAction(Action action)
+    {
+        _goToListButton.onClick.RemoveAllListeners();
+        _goToListButton.onClick.AddListener(() => action());
+    }
+
     public void ResetPostView()
     {
         foreach(Transform child in _imagesParent.transform)
