@@ -100,10 +100,21 @@ public class PostView : MonoBehaviour
         }
     }
 
-    public void AddComment(CommentDto commentDto)
+    public void AddComment(CommentDto commentDto, Action<int, string> replyCallback = null)
     {
         var clone = Instantiate(_commentViewPrefab, _commentsParent.transform);
-        clone.Presenter.SetComment(commentDto);
+        clone.Presenter.SetComment(commentDto, replyCallback);
+    }
+
+    public void ClearComments()
+    {
+        foreach (Transform child in _commentsParent.transform)
+            GameObject.Destroy(child.gameObject);
+    }
+
+    public void SetCommentCount(int count)
+    {
+        if (_commentsTitleText) _commentsTitleText.text = $"댓글 {count}";
     }
 
     /// <summary>

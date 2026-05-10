@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using Utils;
@@ -29,7 +30,10 @@ public class CommunityPresenter
     private List<string> _selectedImageFileNames = new List<string>();
     private List<CommunityAddPictureButton> _pictureButtons = new List<CommunityAddPictureButton>();
 
-    private static readonly string[] CategoryApiValues = { "QUESTION", "REVIEW", "FURNITURE", "INTERIOR", "ETC" };
+    private int _currentPostId = -1;
+    private int? _replyTargetCommentId = null;
+
+    private static readonly string[] CategoryApiValues = {"FURNITURE", "INTERIOR", "QUESTION", "REVIEW", "ETC" };
 
     public CommunityPresenter(CommunityView view, PostView postView)
     {
@@ -61,6 +65,7 @@ public class CommunityPresenter
         _isShowingNewPost = true;
         _view.ShowNewPostPanel();
         SpawnEmptyPictureButton();
+        OnCategorySelected(0); // default to FURNITURE
     }
 
     public void OnCategorySelected(int index)
@@ -78,11 +83,27 @@ public class CommunityPresenter
     {
         string title = _view.GetPostTitle();
         string content = _view.GetPostContent();
-        if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(content) || _selectedCategoryIndex < 0)
+
+        if (string.IsNullOrEmpty(title))
+        {
+            PopupView.Instance.ShowMessage("제목을 입력해주세요.");
             return;
+        }
+        if (string.IsNullOrEmpty(content))
+        {
+            PopupView.Instance.ShowMessage("내용을 입력해주세요.");
+            return;
+        }
+        if (_selectedCategoryIndex < 0)
+        {
+            PopupView.Instance.ShowMessage("카테고리를 선택해주세요.");
+            return;
+        }
 
         string category = CategoryApiValues[_selectedCategoryIndex];
         string scope = _view.GetSelectedScope();
+
+        PopupView.Instance.SetLoadingPannelActive(true);
 
         (long code, _) = await CommunityService.CreatePost(
             title, content, category, scope,
@@ -90,10 +111,16 @@ public class CommunityPresenter
             imageFileNames: _selectedImageFileNames.Count > 0 ? _selectedImageFileNames : null
         );
 
+        PopupView.Instance.SetLoadingPannelActive(false);
+
         if (code == 200 || code == 201)
         {
             CloseNewPostPanel();
             RefreshPosts();
+        }
+        else
+        {
+            PopupView.Instance.ShowMessage($"게시글 등록에 실패했습니다. (오류 코드: {code})");
         }
     }
 
@@ -348,6 +375,10 @@ public class CommunityPresenter
     {
         if (_isShowingDetails) return;
         _isShowingDetails = true;
+        _currentPostId = postId;
+        _replyTargetCommentId = null;
+        _view.ClearCommentInput();
+        _view.ResetCommentInputPlaceholder();
 
         long responseCode;
         string jsonBody;
@@ -373,12 +404,14 @@ public class CommunityPresenter
                         await MemberService.GetMemberProfilePicUrlByMemberId(postContent.memberId)
                     );
 
-                _postView.AddContentImage(postContent.imageUrl);
+                var urls = postContent.imageUrls != null && postContent.imageUrls.Count > 0
+                    ? postContent.imageUrls
+                    : (!string.IsNullOrEmpty(postContent.imageUrl) ? new List<string> { postContent.imageUrl } : null);
+                if (urls != null)
+                    foreach (var url in urls)
+                        _postView.AddContentImage(url);
 
-                foreach (var comment in postComments)
-                {
-                    _postView.AddComment(comment);
-                }
+                RenderComments(postComments);
 
                 _postView.ShowPostView();
             }
@@ -392,6 +425,133 @@ public class CommunityPresenter
     private void CloseDetail()
     {
         _isShowingDetails = false;
+        _currentPostId = -1;
+        _replyTargetCommentId = null;
+        _view.ClearCommentInput();
+        _view.ResetCommentInputPlaceholder();
         _postView.HidePostView();
+    }
+
+    public async void OnSubmitCommentClicked()
+    {
+        if (_currentPostId < 0) return;
+
+        string content = _view.GetCommentInputText();
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            PopupView.Instance.ShowMessage("댓글 내용을 입력해주세요.");
+            return;
+        }
+
+        PopupView.Instance.SetLoadingPannelActive(true);
+        var (code, _) = await CommunityService.CreateComment(_currentPostId, content, _replyTargetCommentId);
+        PopupView.Instance.SetLoadingPannelActive(false);
+
+        if (code == 200 || code == 201)
+        {
+            _view.ClearCommentInput();
+            _replyTargetCommentId = null;
+            _view.ResetCommentInputPlaceholder();
+            await ReloadComments();
+        }
+        else
+        {
+            PopupView.Instance.ShowMessage($"댓글 등록에 실패했습니다. (오류 코드: {code})");
+        }
+    }
+
+    private void OnReplyButtonClicked(int commentId, string userName)
+    {
+        _replyTargetCommentId = commentId;
+        _view.SetCommentInputPlaceholder($"@{userName}님에게 답글 작성");
+        _view.FocusCommentInput();
+    }
+
+    private async System.Threading.Tasks.Task ReloadComments()
+    {
+        if (_currentPostId < 0) return;
+
+        var (code, json) = await PostCommentService.GetPostCommentsById(_currentPostId);
+        if (code != 200 || string.IsNullOrEmpty(json)) return;
+
+        try
+        {
+            List<CommentDto> comments = JsonConvert.DeserializeObject<List<CommentDto>>(json);
+            _postView.SetCommentCount(comments.Count);
+            RenderComments(comments);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+        }
+    }
+
+    private void RenderComments(List<CommentDto> comments)
+    {
+        _postView.ClearComments();
+        if (comments == null) return;
+
+        foreach (var comment in OrderForThreadView(comments))
+            _postView.AddComment(comment, OnReplyButtonClicked);
+    }
+
+    // Server returns comments as a flat list with no guaranteed ordering between
+    // top-level comments and their replies. Re-organize so each thread renders as
+    // [root, reply, reply, ...] grouped together. Replies are walked up the parent
+    // chain to their root so any depth collapses into the same group; orphan
+    // replies (parent missing from the response) are appended at the end.
+    private static IEnumerable<CommentDto> OrderForThreadView(List<CommentDto> comments)
+    {
+        var byId = new Dictionary<int, CommentDto>(comments.Count);
+        foreach (var c in comments) byId[c.id] = c;
+
+        DateTime CreatedAt(CommentDto c) =>
+            DateTime.TryParse(c.createdAt, out var dt) ? dt : DateTime.MinValue;
+
+        int RootIdOf(CommentDto c)
+        {
+            var current = c;
+            var seen = new HashSet<int> { current.id };
+            while (current.parentCommentId.HasValue
+                   && byId.TryGetValue(current.parentCommentId.Value, out var parent)
+                   && seen.Add(parent.id))
+            {
+                current = parent;
+            }
+            return current.id;
+        }
+
+        var grouped = new Dictionary<int, List<CommentDto>>();
+        var orphans = new List<CommentDto>();
+        foreach (var c in comments)
+        {
+            if (c.parentCommentId.HasValue && !byId.ContainsKey(c.parentCommentId.Value))
+            {
+                orphans.Add(c);
+                continue;
+            }
+            int rootId = RootIdOf(c);
+            if (!grouped.TryGetValue(rootId, out var bucket))
+            {
+                bucket = new List<CommentDto>();
+                grouped[rootId] = bucket;
+            }
+            bucket.Add(c);
+        }
+
+        var orderedRootIds = grouped.Keys
+            .OrderBy(id => CreatedAt(byId[id]))
+            .ToList();
+
+        foreach (var rootId in orderedRootIds)
+        {
+            var bucket = grouped[rootId];
+            yield return byId[rootId];
+            foreach (var reply in bucket.Where(c => c.id != rootId).OrderBy(CreatedAt))
+                yield return reply;
+        }
+
+        foreach (var orphan in orphans.OrderBy(CreatedAt))
+            yield return orphan;
     }
 }

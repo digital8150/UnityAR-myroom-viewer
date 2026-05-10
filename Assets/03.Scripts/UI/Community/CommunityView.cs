@@ -28,6 +28,8 @@ public class CommunityView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _refreshIndicator;
     [SerializeField] private PostView _postView;
     [SerializeField] private Button _writePostButton;
+    [SerializeField] private Button _writeCommentButton;
+    [SerializeField] private TMP_InputField _commentInputField;
 
     [Header("Page3 : New Post")]
     [SerializeField] private GameObject _page3pannel;
@@ -42,15 +44,15 @@ public class CommunityView : MonoBehaviour
     [SerializeField] private Button _submitButton;
 
     private CommunityPresenter _presenter;
-    private Color _categoryUnselectedBGColor;
 
     private List<NoImagePostView> _postViews = new List<NoImagePostView>();
+    private string _defaultCommentPlaceholder;
 
     private void Awake()
     {
         _presenter = new CommunityPresenter(this, _postView);
-        if (_categoryButtons.Length > 0)
-            _categoryUnselectedBGColor = _categoryButtons[0].BackgroundImage.color;
+        if (_commentInputField && _commentInputField.placeholder is TextMeshProUGUI ph)
+            _defaultCommentPlaceholder = ph.text;
     }
 
     private void Start()
@@ -59,6 +61,7 @@ public class CommunityView : MonoBehaviour
         _returnButton.onClick.AddListener(_presenter.OnReturnButtonClicked);
         _writePostButton.onClick.AddListener(_presenter.OnWritePostButtonClicked);
         _submitButton.onClick.AddListener(_presenter.OnSubmitNewPostButtonClicked);
+        if (_writeCommentButton) _writeCommentButton.onClick.AddListener(_presenter.OnSubmitCommentClicked);
 
         for (int i = 0; i < _categoryButtons.Length; i++)
         {
@@ -123,7 +126,11 @@ public class CommunityView : MonoBehaviour
     public void HideNewPostPanel() => _page3pannel.SetActive(false);
 
     public CommunityAddPictureButton SpawnAddPictureButton()
-        => Instantiate(_communityAddPictureButtonPrefab, _CommunityAddPictureParent);
+    {
+        var button = Instantiate(_communityAddPictureButtonPrefab, _CommunityAddPictureParent);
+        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_CommunityAddPictureParent.parent);
+        return button;
+    }
 
     public string GetPostTitle() => _titleInputField.text;
     public string GetPostContent() => _contentInputField.text;
@@ -132,7 +139,11 @@ public class CommunityView : MonoBehaviour
     public void UpdateCategoryVisual(int selectedIndex)
     {
         for (int i = 0; i < _categoryButtons.Length; i++)
-            _categoryButtons[i].BackgroundImage.color = i == selectedIndex ? _categorySelectedBGColor : _categoryUnselectedBGColor;
+        {
+            bool selected = i == selectedIndex;
+            _categoryButtons[i].BackgroundImage.color = selected ? _categorySelectedBGColor : Color.white;
+            _categoryButtons[i].Text.color = selected ? Color.white : Color.black;
+        }
     }
 
     public void ResetNewPostForm()
@@ -141,6 +152,33 @@ public class CommunityView : MonoBehaviour
         _contentInputField.text = "";
         _scopePublicToggle.isOn = true;
         for (int i = 0; i < _categoryButtons.Length; i++)
-            _categoryButtons[i].BackgroundImage.color = _categoryUnselectedBGColor;
+        {
+            _categoryButtons[i].BackgroundImage.color = Color.white;
+            _categoryButtons[i].Text.color = Color.black;
+        }
+    }
+
+    public string GetCommentInputText() => _commentInputField ? _commentInputField.text : string.Empty;
+
+    public void ClearCommentInput()
+    {
+        if (_commentInputField) _commentInputField.text = string.Empty;
+    }
+
+    public void SetCommentInputPlaceholder(string placeholder)
+    {
+        if (_commentInputField && _commentInputField.placeholder is TextMeshProUGUI ph)
+            ph.text = placeholder;
+    }
+
+    public void ResetCommentInputPlaceholder()
+    {
+        if (_commentInputField && _commentInputField.placeholder is TextMeshProUGUI ph)
+            ph.text = _defaultCommentPlaceholder;
+    }
+
+    public void FocusCommentInput()
+    {
+        if (_commentInputField) _commentInputField.ActivateInputField();
     }
 }

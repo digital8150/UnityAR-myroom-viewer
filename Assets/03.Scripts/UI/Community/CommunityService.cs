@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Networking;
 
 public class CommunityService : BaseService
 {
@@ -68,7 +70,8 @@ public class CommunityService : BaseService
             return await SendRequest(url, "POST", form, accept: "*/*");
         }
 
-        return await SendRequest(url, "POST");
+        var (emptyBody, emptyContentType) = BuildEmptyImagesMultipart();
+        return await SendRequest(url, "POST", rawBody: emptyBody, contentType: emptyContentType, accept: "*/*");
     }
 
     /// <summary>
@@ -147,7 +150,25 @@ public class CommunityService : BaseService
             return await SendRequest(url, "PUT", form, accept: "*/*");
         }
 
-        return await SendRequest(url, "PUT");
+        var (emptyBody, emptyContentType) = BuildEmptyImagesMultipart();
+        return await SendRequest(url, "PUT", rawBody: emptyBody, contentType: emptyContentType, accept: "*/*");
+    }
+
+    // Builds a multipart/form-data body equivalent to curl `-F 'images='`:
+    // a single text part named "images" with empty content. Required because
+    // Unity's WWWForm switches to application/x-www-form-urlencoded when no
+    // binary data is attached (server rejects with 500), and
+    // MultipartFormDataSection refuses empty payloads, so we serialize by hand.
+    private static (byte[] body, string contentType) BuildEmptyImagesMultipart()
+    {
+        string boundary = "----UnityFormBoundary" + Guid.NewGuid().ToString("N");
+        string body =
+            "--" + boundary + "\r\n" +
+            "Content-Disposition: form-data; name=\"images\"\r\n" +
+            "\r\n" +
+            "\r\n" +
+            "--" + boundary + "--\r\n";
+        return (Encoding.UTF8.GetBytes(body), "multipart/form-data; boundary=" + boundary);
     }
 
     /// <summary>

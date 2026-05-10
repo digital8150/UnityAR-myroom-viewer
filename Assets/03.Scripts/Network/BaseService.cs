@@ -4,10 +4,10 @@ using UnityEngine;
 
 public class BaseService
 {
-    // jsonPayload ∆ƒ∂ÛπÃ≈Õ √ﬂ∞°
-    protected static async Task<(long, string)> SendRequest(string url, string method, WWWForm form = null, string jsonPayload = null, string accept = "application/json")
+    // jsonPayload ÌååÎùºÎØ∏ÌÑ∞ Ï∂îÍ∞Ä
+    protected static async Task<(long, string)> SendRequest(string url, string method, WWWForm form = null, string jsonPayload = null, byte[] rawBody = null, string accept = "application/json", string contentType = null)
     {
-        var (code, body) = await ExecuteRequest(url, method, form, jsonPayload, accept);
+        var (code, body) = await ExecuteRequest(url, method, form, jsonPayload, rawBody, accept, contentType);
 
         if (code == 401)
         {
@@ -17,14 +17,14 @@ public class BaseService
             if (isRefreshed)
             {
                 Debug.Log("Refresh successful. Retrying request...");
-                return await ExecuteRequest(url, method, form, jsonPayload, accept);
+                return await ExecuteRequest(url, method, form, jsonPayload, rawBody, accept, contentType);
             }
         }
 
         return (code, body);
     }
 
-    private static async Task<(long, string)> ExecuteRequest(string url, string method, WWWForm form = null, string jsonPayload = null, string accept = "application/json")
+    private static async Task<(long, string)> ExecuteRequest(string url, string method, WWWForm form = null, string jsonPayload = null, byte[] rawBody = null, string accept = "application/json", string contentType = null)
     {
         using var request = new UnityWebRequest(url, method);
         request.downloadHandler = new DownloadHandlerBuffer();
@@ -34,13 +34,20 @@ public class BaseService
             request.uploadHandler = new UploadHandlerRaw(form.data);
             request.SetRequestHeader("Content-Type", form.headers["Content-Type"]);
         }
-        // JSON ∆‰¿Ã∑ŒµÂ∞° ¿÷¿∏∏È UTF8 πŸ¿Ã∆Æ∑Œ ∫Ø»Ø«ÿº≠ ºº∆√!
+        // JSON ÌéòÏù¥Î°úÎìúÍ∞Ä ÏûàÏúºÎ©¥ UTF8 Î∞îÏù¥Ìä∏Î°ú Î≥ÄÌôòÌï¥ÏÑú Ï†ÑÏÜ°!
         else if (!string.IsNullOrEmpty(jsonPayload))
         {
             byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonPayload);
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.SetRequestHeader("Content-Type", "application/json");
         }
+        else if (rawBody != null)
+        {
+            request.uploadHandler = new UploadHandlerRaw(rawBody);
+        }
+
+        if (!string.IsNullOrEmpty(contentType))
+            request.SetRequestHeader("Content-Type", contentType);
 
         request.SetRequestHeader("Authorization", $"Bearer {JWTToken.Token}");
         request.SetRequestHeader("accept", accept);

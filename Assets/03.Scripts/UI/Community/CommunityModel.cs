@@ -26,6 +26,7 @@ public class PostContent
     public int? model3dId; // null 허용
     public string model3dName;
     public string imageUrl;
+    public List<string> imageUrls;
     public string title;
     public string content;
     public string category; // Enum 처리 권장 (QUESTION, REVIEW, FURNITURE 등)

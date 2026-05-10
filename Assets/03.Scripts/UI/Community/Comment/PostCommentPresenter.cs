@@ -14,7 +14,7 @@ public class PostCommentPresenter
         _replyLeftPadding = replyLeftPadding;
     }
 
-    public async void SetComment(CommentDto commentDto)
+    public async void SetComment(CommentDto commentDto, Action<int, string> replyCallback = null)
     {
         var (responseCode, jsonBody) = await MemberService.GetMemberJSONByMemberId(commentDto.memberId);
         string profilePictureUrl = null;
@@ -36,10 +36,15 @@ public class PostCommentPresenter
 
         _view.SetUserNameText(TranslateUsernameText(commentDto));
         _view.SetCommentContentText(commentDto.content);
-        
+
         if(commentDto.parentCommentId != null)
         {
             _view.SetLeftPaddingg(_replyLeftPadding);
+        }
+
+        if (replyCallback != null)
+        {
+            _view.SetAddReplyButtonAction(() => replyCallback(commentDto.id, commentDto.memberName));
         }
     }
 
