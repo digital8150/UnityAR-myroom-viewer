@@ -62,6 +62,12 @@ public class CommunityView : MonoBehaviour
         _writePostButton.onClick.AddListener(_presenter.OnWritePostButtonClicked);
         _submitButton.onClick.AddListener(_presenter.OnSubmitNewPostButtonClicked);
         if (_writeCommentButton) _writeCommentButton.onClick.AddListener(_presenter.OnSubmitCommentClicked);
+        if (_commentInputField)
+        {
+            _commentInputField.onSelect.AddListener(_presenter.OnCommentInputFieldFocused);
+            _commentInputField.onValueChanged.AddListener(_presenter.OnCommentInputFieldValueChanged);
+            _commentInputField.onEndEdit.AddListener(_presenter.OnCommentInputFieldEndEdit);
+        }
 
         for (int i = 0; i < _categoryButtons.Length; i++)
         {
@@ -82,6 +88,12 @@ public class CommunityView : MonoBehaviour
         foreach(var postView in _postViews)
         {
             postView.GetButton().onClick.RemoveAllListeners();
+        }
+        if (_commentInputField)
+        {
+            _commentInputField.onSelect.RemoveAllListeners();
+            _commentInputField.onValueChanged.RemoveAllListeners();
+            _commentInputField.onEndEdit.RemoveAllListeners();
         }
     }
 

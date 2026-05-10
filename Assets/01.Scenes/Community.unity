@@ -5325,11 +5325,11 @@ GameObject:
   m_Component:
   - component: {fileID: 1044005312}
   - component: {fileID: 1044005316}
-  - component: {fileID: 1044005315}
   - component: {fileID: 1044005314}
   - component: {fileID: 1044005313}
+  - component: {fileID: 1044005317}
   m_Layer: 5
-  m_Name: Procedural Image
+  m_Name: LikeImage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5382,7 +5382,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FreeModifier
   radius: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &1044005315
+--- !u!222 &1044005316
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1044005311}
+  m_CullTransparentMesh: 1
+--- !u!114 &1044005317
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -5391,9 +5399,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 1044005311}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41f1c5417c9d7ab4b84e531f83f60a4b, type: 3}
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UnityEngine.UI.ProceduralImage.ProceduralImage
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -5412,16 +5420,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
-  borderWidth: 0
-  falloffDistance: 1
---- !u!222 &1044005316
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1044005311}
-  m_CullTransparentMesh: 1
 --- !u!1 &1048732276
 GameObject:
   m_ObjectHideFlags: 0
@@ -7747,6 +7745,9 @@ MonoBehaviour:
   _infoText: {fileID: 11643059}
   _imagesParent: {fileID: 1634715940}
   _likeButton: {fileID: 1964845115}
+  _defaultLikeSprite: {fileID: 21300000, guid: cd3a146ce8cb66f4ba0e12c7f0178e0c, type: 3}
+  _filledLikeSprite: {fileID: 21300000, guid: 8aff06f80ea4d3346a2c2ce552fcbe95, type: 3}
+  _likeButtonImage: {fileID: 1044005317}
   _contentText: {fileID: 1840199992}
   _goToListButton: {fileID: 1386470680}
   _commentsTitleText: {fileID: 1176433434}

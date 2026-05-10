@@ -34,6 +34,7 @@ public class PostContent
     public int viewCount;
     public int likeCount;
     public int commentCount;
+    public bool liked;
     public string createdAt;
     public string updatedAt;
 }

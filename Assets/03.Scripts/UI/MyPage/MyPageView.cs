@@ -23,6 +23,8 @@ public class MyPageView : MonoBehaviour
     [SerializeField] private Button _goToNewProject;
 
     [Header("Page 2 : Profile Edit Page")]
+    [SerializeField] private Image _profilePictureImage2;
+    [SerializeField] private AspectRatioFitter _profilePictureImageARF2;
     [SerializeField] private Button _saveProfileButton;
     [SerializeField] private Button _cancelEditButton;
     [SerializeField] private TMP_InputField _nicknameInputField;
@@ -103,19 +105,20 @@ public class MyPageView : MonoBehaviour
 
     public void SetProfilePicture(Sprite sprite)
     {
-        if (_profilePictureImage == null)
-        {
-            Debug.LogWarning("MyPageView: _profilePictureImage is null.");
-            return;
-        }
-        _profilePictureImage.sprite = sprite;
-        if (_profilePictureImageARF != null)
+
+        if (_profilePictureImage)
+            _profilePictureImage.sprite = sprite;
+        if (_profilePictureImageARF)
             _profilePictureImageARF.aspectRatio = sprite.rect.width / sprite.rect.height;
+        if (_profilePictureImage2)
+            _profilePictureImage2.sprite = sprite;
+        if (_profilePictureImageARF2)
+            _profilePictureImageARF2.aspectRatio = sprite.rect.width / sprite.rect.height;  
     }
 
     public async void SetProfilePicture(string imageUrl)
     {
-        if (_profilePictureImage == null) return;
+        if (string.IsNullOrEmpty(imageUrl)) return;
         SetProfilePicture(await Utils.ImageUtils.LoadSpriteFromUrlAsync(imageUrl));
     }
 

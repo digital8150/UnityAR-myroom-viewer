@@ -32,6 +32,8 @@ public class CommunityPresenter
 
     private int _currentPostId = -1;
     private int? _replyTargetCommentId = null;
+    private bool _currentLiked = false;
+    private bool _isTogglingLike = false;
 
     private static readonly string[] CategoryApiValues = {"FURNITURE", "INTERIOR", "QUESTION", "REVIEW", "ETC" };
 
@@ -404,6 +406,10 @@ public class CommunityPresenter
                         await MemberService.GetMemberProfilePicUrlByMemberId(postContent.memberId)
                     );
 
+                _currentLiked = postContent.liked;
+                _postView.SetLiked(_currentLiked);
+                _postView.SetLikeButtonAction(OnLikeToggled);
+
                 var urls = postContent.imageUrls != null && postContent.imageUrls.Count > 0
                     ? postContent.imageUrls
                     : (!string.IsNullOrEmpty(postContent.imageUrl) ? new List<string> { postContent.imageUrl } : null);
@@ -460,11 +466,53 @@ public class CommunityPresenter
         }
     }
 
+    private async void OnLikeToggled(bool newLiked)
+    {
+        if (_currentPostId < 0 || _isTogglingLike) return;
+        if (newLiked == _currentLiked) return;
+
+        _isTogglingLike = true;
+        _currentLiked = newLiked;
+        _postView.SetLiked(newLiked);
+
+        var (code, _) = newLiked
+            ? await CommunityService.LikePost(_currentPostId)
+            : await CommunityService.UnlikePost(_currentPostId);
+
+        if (code != 200 && code != 201 && code != 204)
+        {
+            _currentLiked = !newLiked;
+            _postView.SetLiked(_currentLiked);
+            PopupView.Instance.ShowMessage($"좋아요 처리에 실패했습니다. (오류 코드: {code})");
+        }
+
+        _isTogglingLike = false;
+    }
+
     private void OnReplyButtonClicked(int commentId, string userName)
     {
         _replyTargetCommentId = commentId;
         _view.SetCommentInputPlaceholder($"@{userName}님에게 답글 작성");
         _view.FocusCommentInput();
+    }
+
+    public void OnCommentInputFieldFocused(string currentText)
+    {
+        if (PopupView.Instance == null) return;
+        PopupView.Instance.SetKeyboardHelperActive(true);
+        PopupView.Instance.SetKeyboardHelperContent(currentText);
+    }
+
+    public void OnCommentInputFieldValueChanged(string text)
+    {
+        if (PopupView.Instance == null) return;
+        PopupView.Instance.SetKeyboardHelperContent(text);
+    }
+
+    public void OnCommentInputFieldEndEdit(string _)
+    {
+        if (PopupView.Instance == null) return;
+        PopupView.Instance.SetKeyboardHelperActive(false);
     }
 
     private async System.Threading.Tasks.Task ReloadComments()

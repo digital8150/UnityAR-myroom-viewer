@@ -7,10 +7,12 @@
         _view = view;
     }
 
-    public void InitializeView()
+    public async void InitializeView()
     {
         _view.SetActiveMainPage(true);
         _view.SetActiveProfileEditPage(false);
+        _view.SetUserInfo(await MemberService.GetMyName());
+        _view.SetProfilePicture(await MemberService.GetMemberProfilePicUrlByMemberId(int.Parse(Utils.JWTUtils.GetUserId())));
     }
 
     public void OnEditProfileClicked()
@@ -19,11 +21,29 @@
         _view.SetActiveProfileEditPage(true);
     }
 
-    public void OnSaveProfileClicked()
+    public async void OnSaveProfileClicked()
     {
         string nickname = _view.GetNicknameInput();
-        // TODO: API 호출로 닉네임 저장
-        _view.SetUserInfo(nickname);
+        string email = Utils.JWTUtils.GetEmail();
+
+        if (!int.TryParse(Utils.JWTUtils.GetUserId(), out int memberId))
+        {
+            UnityEngine.Debug.LogError("MyPagePresenter: Failed to parse memberId from JWT.");
+            return;
+        }
+
+        var (responseCode, member) = await MemberService.UpdateMember(memberId, nickname, email);
+
+        if (responseCode == 200 && member != null)
+        {
+            _view.SetUserInfo(member.username);
+        }
+        else
+        {
+            UnityEngine.Debug.LogError($"MyPagePresenter: UpdateMember failed with code {responseCode}.");
+            _view.SetUserInfo(nickname);
+        }
+
         _view.SetActiveProfileEditPage(false);
         _view.SetActiveMainPage(true);
     }
@@ -60,7 +80,59 @@
 
     public void OnChangeProfilePictureClicked()
     {
-        // TODO: 갤러리 또는 카메라에서 이미지 선택
+        if (NativeFilePicker.IsFilePickerBusy())
+        {
+            PopupView.Instance.ShowMessage("파일 선택기가 현재 사용 중입니다. 잠시 후 다시 시도해주세요.");
+            return;
+        }
+
+        try
+        {
+            NativeFilePicker.PickFile(async (path) =>
+            {
+                if (path == null) return;
+
+                string lowerPath = path.ToLower();
+                if (!lowerPath.EndsWith(".png") && !lowerPath.EndsWith(".jpg") && !lowerPath.EndsWith(".jpeg"))
+                {
+                    PopupView.Instance.ShowMessage("유효하지 않은 파일 형식입니다. PNG, JPG, JPEG 파일만 선택해주세요.");
+                    return;
+                }
+
+                PopupView.Instance.SetLoadingPannelActive(true);
+
+                byte[] bytes = await System.IO.File.ReadAllBytesAsync(path);
+                long responseCode = await MemberService.UpdateProfileImage(bytes);
+
+                if (responseCode == 200)
+                {
+                    var texture = new UnityEngine.Texture2D(2, 2);
+                    if (UnityEngine.ImageConversion.LoadImage(texture, bytes))
+                    {
+                        var sprite = UnityEngine.Sprite.Create(
+                            texture,
+                            new UnityEngine.Rect(0, 0, texture.width, texture.height),
+                            new UnityEngine.Vector2(0.5f, 0.5f));
+                        _view.SetProfilePicture(sprite);
+                    }
+                    else
+                    {
+                        UnityEngine.Object.Destroy(texture);
+                    }
+                }
+                else
+                {
+                    UnityEngine.Debug.LogError($"[MyPagePresenter] UpdateProfileImage failed. responseCode: {responseCode}");
+                    PopupView.Instance.ShowMessage("프로필 사진 업로드 중 오류가 발생했습니다.");
+                }
+
+                PopupView.Instance.SetLoadingPannelActive(false);
+            });
+        }
+        catch (System.Exception e)
+        {
+            PopupView.Instance.ShowMessage($"파일 선택 중 오류가 발생했습니다: {e.Message}");
+        }
     }
 
     public void OnGoToMyPostClicked()

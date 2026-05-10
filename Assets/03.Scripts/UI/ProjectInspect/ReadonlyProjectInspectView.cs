@@ -2,6 +2,8 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem.EnhancedTouch;
+using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 using UnityEngine.UI;
 using Utils;
 
@@ -25,9 +27,32 @@ public class ReadonlyProjectInspectView : MonoBehaviour
 
     private GameObject _spawnedModel; // 생성된 모델 참조용
 
+    private void OnEnable()
+    {
+        EnhancedTouchSupport.Enable();
+        Touch.onFingerDown += OnFingerDown;
+    }
+
+    private void OnDisable()
+    {
+        Touch.onFingerDown -= OnFingerDown;
+        EnhancedTouchSupport.Disable();
+    }
+
     private void Update()
     {
         UpdateModelRotation();
+    }
+
+    private void OnFingerDown(Finger finger)
+    {
+        if (_contentText == null) return;
+
+        int linkIndex = TMP_TextUtilities.FindIntersectingLink(_contentText, finger.screenPosition, null);
+        if (linkIndex >= 0)
+        {
+            Application.OpenURL(_contentText.textInfo.linkInfo[linkIndex].GetLinkID());
+        }
     }
 
     public async void SetContent(ModelDimension modelDimension, ModelData modelData)
@@ -39,7 +64,7 @@ public class ReadonlyProjectInspectView : MonoBehaviour
         Sprite userProfilePic = await ImageUtils.LoadSpriteFromUrlAsync(await MemberService.GetMemberProfilePicUrlByMemberId(modelData.creatorId));
         if(userProfilePic == null) userProfilePic = _defaultProfilePic;
 
-        if (_profileImage) _profileImage.sprite = await ImageUtils.LoadSpriteFromUrlAsync(await MemberService.GetMemberProfilePicUrlByMemberId(modelData.creatorId));
+        if (_profileImage) _profileImage.sprite = userProfilePic;
         if (_contentText)
         {
             string content = string.Empty;
@@ -76,6 +101,13 @@ public class ReadonlyProjectInspectView : MonoBehaviour
             "others" => "카테고리 미지정",
             _ => category // 매칭되는 것이 없으면 원래 문자열 반환
         };
+    }
+
+    public void Cleanup()
+    {
+        if (_spawnedModel) Destroy(_spawnedModel);
+        _spawnedModel = null;
+        if (_shadowCatchPlane) _shadowCatchPlane.SetActive(false);
     }
 
     public async void SpawnModel3D(string localModelPath)

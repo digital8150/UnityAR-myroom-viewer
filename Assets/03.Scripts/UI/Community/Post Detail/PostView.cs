@@ -23,6 +23,9 @@ public class PostView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _infoText;
     [SerializeField] private GameObject _imagesParent;
     [SerializeField] private Button _likeButton;
+    [SerializeField] private Sprite _defaultLikeSprite;
+    [SerializeField] private Sprite _filledLikeSprite;
+    [SerializeField] private Image _likeButtonImage;
     [SerializeField] private TextMeshProUGUI _contentText;
     [SerializeField] private Button _goToListButton;
     [SerializeField] private TextMeshProUGUI _commentsTitleText;
@@ -65,6 +68,23 @@ public class PostView : MonoBehaviour
     {
         _goToListButton.onClick.RemoveAllListeners();
         _goToListButton.onClick.AddListener(() => action());
+    }
+
+    public void SetLiked(bool liked)
+    {
+        if (_likeButtonImage)
+            _likeButtonImage.sprite = liked ? _filledLikeSprite : _defaultLikeSprite;
+    }
+
+    public void SetLikeButtonAction(Action<bool> onToggle)
+    {
+        if (!_likeButton) return;
+        _likeButton.onClick.RemoveAllListeners();
+        _likeButton.onClick.AddListener(() =>
+        {
+            bool newLiked = _likeButtonImage != null && _likeButtonImage.sprite != _filledLikeSprite;
+            onToggle?.Invoke(newLiked);
+        });
     }
 
     public void ResetPostView()

@@ -239,6 +239,7 @@ public class AIRecommendPresenter
 
         ARPlaceCore.CurrentModelPath = modelPath;
         ARPlaceCore.CurrentModelDimension = modelDimension;
+        _view.InspectView.Cleanup();
         _view.ShowARPlacePage();
         _currentPage = AIRecommendViewPage.AR;
         _view.SetARCancleButtonAction(() =>
@@ -316,6 +317,7 @@ public class AIRecommendPresenter
                 _currentPage = AIRecommendViewPage.List;
                 break;
             case AIRecommendViewPage.Inspect:
+                _view.InspectView.Cleanup();
                 _view.ShowListPage();
                 _currentPage = AIRecommendViewPage.List;
                 break;
