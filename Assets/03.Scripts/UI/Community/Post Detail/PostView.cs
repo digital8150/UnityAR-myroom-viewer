@@ -26,6 +26,9 @@ public class PostView : MonoBehaviour
     [SerializeField] private Sprite _defaultLikeSprite;
     [SerializeField] private Sprite _filledLikeSprite;
     [SerializeField] private Image _likeButtonImage;
+    [SerializeField] private GameObject _editDeleteGroup;
+    [SerializeField] private Button _editButton;
+    [SerializeField] private Button _deleteButton;
     [SerializeField] private TextMeshProUGUI _contentText;
     [SerializeField] private Button _goToListButton;
     [SerializeField] private TextMeshProUGUI _commentsTitleText;
@@ -85,6 +88,30 @@ public class PostView : MonoBehaviour
             bool newLiked = _likeButtonImage != null && _likeButtonImage.sprite != _filledLikeSprite;
             onToggle?.Invoke(newLiked);
         });
+    }
+
+    public void ShowEditDeleteButtons(Action onEdit, Action onDelete)
+    {
+        if (_editDeleteGroup) _editDeleteGroup.SetActive(true);
+        if (_likeButton) _likeButton.gameObject.SetActive(false);
+
+        if (_editButton)
+        {
+            _editButton.onClick.RemoveAllListeners();
+            _editButton.onClick.AddListener(() => onEdit?.Invoke());
+        }
+
+        if (_deleteButton)
+        {
+            _deleteButton.onClick.RemoveAllListeners();
+            _deleteButton.onClick.AddListener(() => onDelete?.Invoke());
+        }
+    }
+
+    public void HideEditDeleteButtons()
+    {
+        if (_editDeleteGroup) _editDeleteGroup.SetActive(false);
+        if (_likeButton) _likeButton.gameObject.SetActive(true);
     }
 
     public void ResetPostView()

@@ -78,4 +78,43 @@ public class ModelService : BaseService
         Debug.LogError($"[ModelService] Failed to get model data for modelId: {modelId}, responseCode: {responseCode}, body: {jsonBody}");
         return null;
     }
+
+    public static async Task<(long responseCode, bool isBookmarked)> GetBookmarkStatus(int modelId)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/model3ds/{modelId}/bookmarks/me";
+        var (responseCode, jsonBody) = await SendRequest(url, "GET");
+
+        if (responseCode == 200)
+        {
+            try
+            {
+                var response = JsonConvert.DeserializeObject<BookmarkStatusResponse>(jsonBody);
+                bool isBookmarked = response.bookmarked;
+                return (responseCode, isBookmarked);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                return (responseCode, false);
+            }
+        }
+
+        return (responseCode, false);
+    }
+
+    public static async Task<long> AddBookmark(int modelId)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/model3ds/{modelId}/bookmarks";
+        var (responseCode, _) = await SendRequest(url, "POST");
+        Debug.Log($"[ModelService] AddBookmark Response Code: {responseCode}");
+        return responseCode;
+    }
+
+    public static async Task<long> RemoveBookmark(int modelId)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/model3ds/{modelId}/bookmarks";
+        var (responseCode, _) = await SendRequest(url, "DELETE");
+        Debug.Log($"[ModelService] RemoveBookmark Response Code: {responseCode}");
+        return responseCode;
+    }
 }

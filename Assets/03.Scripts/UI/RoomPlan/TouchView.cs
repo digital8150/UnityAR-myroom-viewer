@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem.EnhancedTouch;
-using ETouch = UnityEngine.InputSystem.EnhancedTouch.Touch; // ±âÁ¸ Touch¿Í È¥µ¿ ¹æÁö
+using ETouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 using System;
 using UnityEngine.EventSystems;
 
@@ -8,57 +8,89 @@ public class TouchView : MonoBehaviour
 {
     public Action<Vector2> OnSingleDrag;
     public Action<Vector2, float> OnDoubleDrag;
+    public Action<Vector2> OnTap;
+
+    private const float TAP_MAX_MOVE_PX = 12f;
+
+    private bool _isTapping = false;
+    private Vector2 _tapStartPos;
 
     private void OnEnable()
     {
-        // ETouch È°¼ºÈ­
         EnhancedTouchSupport.Enable();
     }
 
     private void OnDisable()
     {
-        // ETouch ºñÈ°¼ºÈ­
         EnhancedTouchSupport.Disable();
+        _isTapping = false;
     }
 
     private void Update()
     {
         var activeTouches = ETouch.activeTouches;
 
-        // 1) ÇÑ ¼Õ°¡¶ô ÅÍÄ¡ µå·¡±×
         if (activeTouches.Count == 1)
         {
             var touch = activeTouches[0];
-            if (touch.phase == UnityEngine.InputSystem.TouchPhase.Moved)
+            bool overViewport = IsPointerOverViewport(touch.screenPosition);
+
+            switch (touch.phase)
             {
-                // UI ¿µ¿ª ¾È¿¡ ÀÖ´ÂÁö Ã¼Å© (¼±ÅÃ »çÇ×)
-                if (IsPointerOverUI(touch.screenPosition))
-                {
-                    OnSingleDrag?.Invoke(touch.delta);
-                }
+                case UnityEngine.InputSystem.TouchPhase.Began:
+                    if (overViewport)
+                    {
+                        _isTapping = true;
+                        _tapStartPos = touch.screenPosition;
+                    }
+                    break;
+
+                case UnityEngine.InputSystem.TouchPhase.Moved:
+                    if (_isTapping && Vector2.Distance(touch.screenPosition, _tapStartPos) > TAP_MAX_MOVE_PX)
+                        _isTapping = false;
+
+                    if (overViewport)
+                        OnSingleDrag?.Invoke(touch.delta);
+                    break;
+
+                case UnityEngine.InputSystem.TouchPhase.Stationary:
+                    // ì†ê°€ë½ì´ ì›€ì§ì´ì§€ ì•ŠëŠ” ë™ì•ˆ íƒ­ ìœ ì§€
+                    break;
+
+                case UnityEngine.InputSystem.TouchPhase.Ended:
+                    if (_isTapping && overViewport)
+                    {
+                        Debug.Log($"[TouchView] OnTap fired at {touch.screenPosition}");
+                        OnTap?.Invoke(touch.screenPosition);
+                    }
+                    _isTapping = false;
+                    break;
+
+                case UnityEngine.InputSystem.TouchPhase.Canceled:
+                    _isTapping = false;
+                    break;
             }
         }
-        // 2) µÎ ¼Õ°¡¶ô ÅÍÄ¡ µå·¡±× (Áß½ÉÁ¡ ÀÌµ¿)
         else if (activeTouches.Count >= 2)
         {
+            _isTapping = false;
+
             var t1 = activeTouches[0];
             var t2 = activeTouches[1];
 
-            if (t1.phase == UnityEngine.InputSystem.TouchPhase.Moved || t2.phase == UnityEngine.InputSystem.TouchPhase.Moved)
+            if (t1.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
+                t2.phase == UnityEngine.InputSystem.TouchPhase.Moved)
             {
-                // µÎ ¼Õ°¡¶ôÀÇ Áß½ÉÁ¡ °è»ê
                 Vector2 currentCenter = (t1.screenPosition + t2.screenPosition) * 0.5f;
                 Vector2 previousCenter = ((t1.screenPosition - t1.delta) + (t2.screenPosition - t2.delta)) * 0.5f;
                 Vector2 centerDelta = currentCenter - previousCenter;
 
-                // XÃà º¯È­·®À» È¸Àü°ªÀ¸·Î Àü´Þ
                 OnDoubleDrag?.Invoke(centerDelta, centerDelta.x);
             }
         }
     }
 
-    // Æ¯Á¤ ÁÂÇ¥°¡ RawImage ¿µ¿ª ³»ºÎÀÎÁö ÆÇº°ÇÏ´Â ÇïÆÛ ÇÔ¼ö
-    private bool IsPointerOverUI(Vector2 screenPos)
+    private bool IsPointerOverViewport(Vector2 screenPos)
     {
         return RectTransformUtility.RectangleContainsScreenPoint(
             GetComponent<RectTransform>(), screenPos, null);

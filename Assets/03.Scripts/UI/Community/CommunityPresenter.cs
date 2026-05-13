@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System;
 using System.IO;
 using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI.ProceduralImage;
 using Utils;
 
 public class CommunityPresenter
@@ -16,7 +18,8 @@ public class CommunityPresenter
 
     private bool _isLastPage = false;
     private bool _isLoading = false;
-    private string _sortBy = "";
+    private string _sortBy = "createdAt,desc";
+    private string _searchString = "";
 
     private float _refreshDistance = 100f;
     private float _startOffset = 10f;
@@ -30,7 +33,14 @@ public class CommunityPresenter
     private List<string> _selectedImageFileNames = new List<string>();
     private List<CommunityAddPictureButton> _pictureButtons = new List<CommunityAddPictureButton>();
 
+    private string _filterCategoryName = "";
+
     private int _currentPostId = -1;
+    private int _currentPostMemberId = -1;
+    private int _currentMemberId = -1;
+    private PostContent _currentPostContent = null;
+    private bool _isEditingPost = false;
+    private List<string> _retainImageUrls = new List<string>();
     private int? _replyTargetCommentId = null;
     private bool _currentLiked = false;
     private bool _isTogglingLike = false;
@@ -42,6 +52,7 @@ public class CommunityPresenter
         _view = view;
         _postView = postView;
         _postView.SetGoToListAction(OnReturnButtonClicked);
+        _view.SetFilterPannelActive(false);
     }
 
     public void OnReturnButtonClicked()
@@ -107,11 +118,24 @@ public class CommunityPresenter
 
         PopupView.Instance.SetLoadingPannelActive(true);
 
-        (long code, _) = await CommunityService.CreatePost(
-            title, content, category, scope,
-            images: _selectedImageBytes.Count > 0 ? _selectedImageBytes : null,
-            imageFileNames: _selectedImageFileNames.Count > 0 ? _selectedImageFileNames : null
-        );
+        long code;
+        if (_isEditingPost)
+        {
+            (code, _) = await CommunityService.UpdatePost(
+                _currentPostId, title, content, category, scope,
+                retainImageUrls: _retainImageUrls.Count > 0 ? _retainImageUrls : null,
+                images: _selectedImageBytes.Count > 0 ? _selectedImageBytes : null,
+                imageFileNames: _selectedImageFileNames.Count > 0 ? _selectedImageFileNames : null
+            );
+        }
+        else
+        {
+            (code, _) = await CommunityService.CreatePost(
+                title, content, category, scope,
+                images: _selectedImageBytes.Count > 0 ? _selectedImageBytes : null,
+                imageFileNames: _selectedImageFileNames.Count > 0 ? _selectedImageFileNames : null
+            );
+        }
 
         PopupView.Instance.SetLoadingPannelActive(false);
 
@@ -129,6 +153,7 @@ public class CommunityPresenter
     private void CloseNewPostPanel()
     {
         _isShowingNewPost = false;
+        _isEditingPost = false;
         _view.HideNewPostPanel();
         _view.ResetNewPostForm();
 
@@ -137,8 +162,11 @@ public class CommunityPresenter
         _pictureButtons.Clear();
         _selectedImageBytes.Clear();
         _selectedImageFileNames.Clear();
+        _retainImageUrls.Clear();
         _selectedCategoryIndex = -1;
         _selectedScope = "PUBLIC";
+        _currentPostId = -1;
+        _currentPostContent = null;
     }
 
     private void SpawnEmptyPictureButton()
@@ -179,36 +207,35 @@ public class CommunityPresenter
 
     private void OnRemovePictureClicked(CommunityAddPictureButton btn)
     {
-        int index = _pictureButtons.IndexOf(btn);
-        if (index < 0 || index >= _selectedImageBytes.Count) return;
-
-        _selectedImageBytes.RemoveAt(index);
-        _selectedImageFileNames.RemoveAt(index);
-        RebuildPictureButtons();
-    }
-
-    private void RebuildPictureButtons()
-    {
-        foreach (var b in _pictureButtons)
-            if (b != null) GameObject.Destroy(b.gameObject);
-        _pictureButtons.Clear();
-
-        for (int i = 0; i < _selectedImageBytes.Count; i++)
+        if (string.IsNullOrEmpty(btn.ImageUrl))
         {
-            var btn = _view.SpawnAddPictureButton();
-            _pictureButtons.Add(btn);
-            int idx = i;
-            Texture2D tex = new Texture2D(2, 2);
-            tex.LoadImage(_selectedImageBytes[idx]);
-            btn.ShowingImage.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), Vector2.one * 0.5f);
-            btn.EmptyState.SetActive(false);
-            btn.FilledState.SetActive(true);
-            btn.RemovePictureButton.onClick.AddListener(() => OnRemovePictureClicked(btn));
+            int index = _pictureButtons.IndexOf(btn);
+            if (index < 0) return;
+
+            int newImageIndex = index - _retainImageUrls.Count;
+            if (newImageIndex >= 0 && newImageIndex < _selectedImageBytes.Count)
+            {
+                _selectedImageBytes.RemoveAt(newImageIndex);
+                _selectedImageFileNames.RemoveAt(newImageIndex);
+            }
+        }
+        else
+        {
+            _retainImageUrls.Remove(btn.ImageUrl);
         }
 
-        if (_selectedImageBytes.Count < 4)
+        _pictureButtons.Remove(btn);
+        if (btn != null) GameObject.Destroy(btn.gameObject);
+
+        _view.RebuildPictureButtonLayout();
+
+        int totalImages = _retainImageUrls.Count + _selectedImageBytes.Count;
+        int emptyButtonCount = _pictureButtons.Count - totalImages;
+
+        if (emptyButtonCount < 1 && totalImages < 4)
             SpawnEmptyPictureButton();
     }
+
 
     public void OnScrollChanged(Vector2 pos)
     {
@@ -254,7 +281,7 @@ public class CommunityPresenter
         long responseCode;
         string jsonBody;
 
-        (responseCode, jsonBody) = await CommunityService.GetPostsSearch(_pageIndex, VIEW_PER_PAGE, _sortBy);
+        (responseCode, jsonBody) = await CommunityService.GetPostsSearch(_pageIndex, VIEW_PER_PAGE, _sortBy, _searchString, _filterCategoryName);
 
         if (responseCode == 200 && !string.IsNullOrEmpty(jsonBody))
         {
@@ -303,6 +330,45 @@ public class CommunityPresenter
         _pageIndex = 0;
         _isLastPage = false;
         LoadPage();
+    }
+
+    public void OnShowFilterClicked()
+    {
+        _view.SetFilterPannelActive(true);
+    }
+
+    public void OnLatestButtonClicked(ProceduralImage image, TextMeshProUGUI text)
+    {
+        _view.SetActiveButtonColor(image, text);
+        _sortBy = "createdAt,desc";
+    }
+
+    public void OnOldestButtonClicked(ProceduralImage image, TextMeshProUGUI text)
+    {
+        _view.SetActiveButtonColor(image, text);
+        _sortBy = "createdAt,asc";
+    }
+
+    public void OnFilterCategorySelected(string categoryName)
+    {
+        _filterCategoryName = categoryName;
+        _view.UpdateFilterCategoryVisual(_filterCategoryName);
+    }
+
+    public void OnResetFilterButtonClicked()
+    {
+        _sortBy = "createdAt,desc";
+        _filterCategoryName = "";
+        _view.ResetFilterCategoryButtons();
+        RefreshPosts();
+        _view.SetFilterPannelActive(false);
+    }
+
+    public void OnApplyFilterButtonClicked()
+    {
+        _searchString = _view.GetNameFilterText();
+        RefreshPosts();
+        _view.SetFilterPannelActive(false);
     }
 
     private string TranslateCategory(string category)
@@ -373,7 +439,7 @@ public class CommunityPresenter
         return dateTime.ToString("yyyy-MM-dd");
     }
 
-    private async void OpenDetail(int postId)
+    public async void OpenDetail(int postId)
     {
         if (_isShowingDetails) return;
         _isShowingDetails = true;
@@ -385,6 +451,21 @@ public class CommunityPresenter
         long responseCode;
         string jsonBody;
 
+        var (currentMemberCode, currentMemberJson) = await MemberService.GetMemberJSONByMe();
+        if (currentMemberCode == 200 && !string.IsNullOrEmpty(currentMemberJson))
+        {
+            try
+            {
+                MemberDto currentMember = JsonConvert.DeserializeObject<MemberDto>(currentMemberJson);
+                _currentMemberId = currentMember.id;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[OpenDetail] Error while loading current member: {ex}");
+                _currentMemberId = -1;
+            }
+        }
+
         (responseCode, jsonBody) = await CommunityService.GetPostById(postId);
         if (responseCode == 200 && !string.IsNullOrEmpty(jsonBody))
         {
@@ -392,6 +473,8 @@ public class CommunityPresenter
             {
                 List<Sprite> postImages = new List<Sprite>();
                 PostContent postContent = JsonConvert.DeserializeObject<PostContent>(jsonBody);
+                _currentPostContent = postContent;
+                _currentPostMemberId = postContent.memberId;
 
                 (responseCode, jsonBody) = await PostCommentService.GetPostCommentsById(postId);
                 List<CommentDto> postComments = JsonConvert.DeserializeObject<List<CommentDto>>(jsonBody);
@@ -406,7 +489,35 @@ public class CommunityPresenter
                         await MemberService.GetMemberProfilePicUrlByMemberId(postContent.memberId)
                     );
 
-                _currentLiked = postContent.liked;
+                if (_currentMemberId == _currentPostMemberId)
+                {
+                    _postView.ShowEditDeleteButtons(OnEditButtonClicked, OnDeleteButtonClicked);
+                }
+                else
+                {
+                    _postView.HideEditDeleteButtons();
+                }
+
+                // Fetch liked status from the new API endpoint
+                var (likedStatusCode, likedStatusJson) = await CommunityService.GetPostLikedStatus(postId);
+                if (likedStatusCode == 200 && !string.IsNullOrEmpty(likedStatusJson))
+                {
+                    try
+                    {
+                        LikedStatusResponse likedStatus = JsonConvert.DeserializeObject<LikedStatusResponse>(likedStatusJson);
+                        _currentLiked = likedStatus.liked;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[OpenDetail] Error while parsing liked status: {ex}");
+                        _currentLiked = false;
+                    }
+                }
+                else
+                {
+                    _currentLiked = false;
+                }
+
                 _postView.SetLiked(_currentLiked);
                 _postView.SetLikeButtonAction(OnLikeToggled);
 
@@ -494,6 +605,94 @@ public class CommunityPresenter
         _replyTargetCommentId = commentId;
         _view.SetCommentInputPlaceholder($"@{userName}님에게 답글 작성");
         _view.FocusCommentInput();
+    }
+
+    private void OnDeleteButtonClicked()
+    {
+        PopupView.Instance.Presenter.ShowYesNo(
+            "포스트를 삭제하시겠습니까?",
+            async () => await DeletePost()
+        );
+    }
+
+    private async System.Threading.Tasks.Task DeletePost()
+    {
+        if (_currentPostId < 0) return;
+
+        PopupView.Instance.SetLoadingPannelActive(true);
+        var (code, _) = await CommunityService.DeletePost(_currentPostId);
+        PopupView.Instance.SetLoadingPannelActive(false);
+
+        if (code == 200 || code == 204)
+        {
+            CloseDetail();
+            RefreshPosts();
+        }
+        else
+        {
+            PopupView.Instance.ShowMessage($"포스트 삭제에 실패했습니다. (오류 코드: {code})");
+        }
+    }
+
+    private void OnEditButtonClicked()
+    {
+        if (_currentPostContent == null) return;
+
+        int postIdToEdit = _currentPostId;
+        _isShowingDetails = false;
+        _postView.HidePostView();
+        _isEditingPost = true;
+        _isShowingNewPost = true;
+        _view.ShowNewPostPanel();
+
+        _view.SetPostForm(_currentPostContent.title, _currentPostContent.content);
+
+        int categoryIndex = System.Array.IndexOf(CategoryApiValues, _currentPostContent.category);
+        OnCategorySelected(categoryIndex >= 0 ? categoryIndex : 0);
+        OnScopeSelected(_currentPostContent.visibilityScope);
+
+        _selectedImageBytes.Clear();
+        _selectedImageFileNames.Clear();
+        _retainImageUrls.Clear();
+
+        if (_currentPostContent.imageUrls != null && _currentPostContent.imageUrls.Count > 0)
+        {
+            _retainImageUrls.AddRange(_currentPostContent.imageUrls);
+        }
+        else if (!string.IsNullOrEmpty(_currentPostContent.imageUrl))
+        {
+            _retainImageUrls.Add(_currentPostContent.imageUrl);
+        }
+
+        foreach (var btn in _pictureButtons)
+            if (btn != null) GameObject.Destroy(btn.gameObject);
+        _pictureButtons.Clear();
+
+        _currentPostId = postIdToEdit;
+
+        SpawnExistingPictureButtons();
+    }
+
+    private async void SpawnExistingPictureButtons()
+    {
+        foreach (var imageUrl in _retainImageUrls)
+        {
+            var btn = _view.SpawnAddPictureButton();
+            _pictureButtons.Add(btn);
+            btn.SetImageUrl(imageUrl);
+
+            Sprite sprite = await ImageUtils.LoadSpriteFromUrlAsync(imageUrl);
+            if (sprite != null)
+            {
+                btn.ShowingImage.sprite = sprite;
+                btn.EmptyState.SetActive(false);
+                btn.FilledState.SetActive(true);
+                btn.RemovePictureButton.onClick.AddListener(() => OnRemovePictureClicked(btn));
+            }
+        }
+
+        if (_retainImageUrls.Count < 4)
+            SpawnEmptyPictureButton();
     }
 
     public void OnCommentInputFieldFocused(string currentText)

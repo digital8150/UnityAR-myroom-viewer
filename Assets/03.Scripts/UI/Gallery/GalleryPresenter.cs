@@ -19,11 +19,17 @@ public class GalleryPresenter : IDisposable
     /// </summary>
     public static int? SelectedModelId = null;
 
+    /// <summary>
+    /// true로 설정하면 Gallery 씬이 북마크 조회 모드로 초기화됩니다.
+    /// </summary>
+    public static bool IsBookmarkMode = false;
+
     private GalleryView _view;
     private int _pageIndex = 0;
 
     private bool _isLastPage = false;
     private bool _isLoading = false;
+    private bool _bookmarkMode = false;
     private GalleryPage _currentPage = GalleryPage.List;
 
     private string _sortBy = "createdAt,desc";
@@ -45,7 +51,11 @@ public class GalleryPresenter : IDisposable
     /// </summary>
     public void Initialize()
     {
+        _bookmarkMode = IsBookmarkMode;
+        IsBookmarkMode = false;
+
         _view.SetFilterPannelActive(false);
+        _view.SetSearchUIActive(!_bookmarkMode);
         _pageIndex = 0;
         _isLastPage = false;
         _isLoading = false;
@@ -77,12 +87,9 @@ public class GalleryPresenter : IDisposable
 
         try
         {
-            var (responseCode, jsonBody) = await GalleryService.GetSharedSearch(
-                page: _pageIndex,
-                size: ITEMS_PER_PAGE,
-                sort: _sortBy,
-                name: _filterByName
-            );
+            (long responseCode, string jsonBody) = _bookmarkMode
+                ? await GalleryService.GetMyBookmarks(page: _pageIndex, size: ITEMS_PER_PAGE, sort: _sortBy)
+                : await GalleryService.GetSharedSearch(page: _pageIndex, size: ITEMS_PER_PAGE, sort: _sortBy, name: _filterByName);
 
             if (responseCode == 200 && !string.IsNullOrEmpty(jsonBody))
             {

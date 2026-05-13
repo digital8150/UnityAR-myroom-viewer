@@ -50,6 +50,7 @@ public class LoginEverywhere : MonoBehaviour
             {
                 LoginResponse loginResponse = JsonConvert.DeserializeObject<LoginResponse>(jsonBody);
                 JWTToken.Token = loginResponse.token;
+                JWTToken.RefreshToken = loginResponse.refreshToken;
 
                 // 웹소켓 연결까지 기다림
                 if (WebsocketController.Instance != null)

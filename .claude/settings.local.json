@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-Content \"d:\\\\Study\\\\UnityAR-myroom-viewer\\\\Assets\\\\03.Scripts\\\\UI\\\\Community\\\\CommunityPresenter.cs\")",
+      "Bash(Select-String -Pattern \"SpawnExistingPictureButtons\" -Context 30)"
+    ]
+  }
+}

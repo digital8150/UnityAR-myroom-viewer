@@ -210,4 +210,33 @@ public class CommunityService : BaseService
         var body = new UpdateCommentRequest { content = content };
         return await SendRequest(url, "PUT", jsonPayload: JsonUtility.ToJson(body));
     }
+
+    /// <summary>
+    /// Fetches whether the current user has liked the specified post.
+    /// </summary>
+    /// <param name="postId">The ID of the post.</param>
+    /// <returns>HTTP status code and response body containing { "liked": true/false }.</returns>
+    public static async Task<(long, string)> GetPostLikedStatus(int postId)
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/posts/{postId}/likes/me";
+        return await SendRequest(url, "GET");
+    }
+
+    /// <summary>
+    /// Fetches posts created by the current user with pagination.
+    /// </summary>
+    public static async Task<(long, string)> GetMyPosts(int page, int size, string sort = "createdAt,desc")
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/posts/my?page={page}&size={size}&sort={sort}";
+        return await SendRequest(url, "GET");
+    }
+
+    /// <summary>
+    /// Fetches posts liked by the current user with pagination.
+    /// </summary>
+    public static async Task<(long, string)> GetMyLikedPosts(int page, int size, string sort = "createdAt,desc")
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/posts/likes/my?page={page}&size={size}&sort={sort}";
+        return await SendRequest(url, "GET");
+    }
 }

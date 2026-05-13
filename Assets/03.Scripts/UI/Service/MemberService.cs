@@ -19,6 +19,14 @@ public class MemberUpdateRequest
     public string email;
 }
 
+[Serializable]
+public class MemberActivityCounts
+{
+    public int postCount;
+    public int commentCount;
+    public int model3dCount;
+}
+
 // BaseService 상속을 위해 일반 class로 변경 (메서드는 static 유지)
 public class MemberService : BaseService
 {
@@ -126,5 +134,26 @@ public class MemberService : BaseService
         form.AddBinaryData("image", imageBytes, "profile.png", "image/png");
         var (responseCode, _) = await SendRequest(url, "PUT", form: form);
         return responseCode;
+    }
+
+    public static async Task<(long, MemberActivityCounts)> GetMyActivityCount()
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/members/me/activity-counts";
+        var (responseCode, jsonBody) = await SendRequest(url, "GET");
+        if (responseCode == 200)
+        {
+            try
+            {
+                MemberActivityCounts memberActivityCounts = JsonConvert.DeserializeObject<MemberActivityCounts>(jsonBody);
+                return (responseCode, memberActivityCounts);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[MemberService.cs] Error occured while parsing jsonBody at GetMyActivityCount() : {ex}");
+                return (responseCode, null);
+            }
+        }
+        Debug.LogWarning($"[MemberService.cs] Failed to get activity counts. Response code: {responseCode}, Body: {jsonBody}");
+        return (responseCode, null);
     }
 }

@@ -18,6 +18,7 @@ public class RoomPlanView : MonoBehaviour
     [SerializeField] private GameObject _projectListPage;
     [SerializeField] private ProjectCardView _projectCardPrefab;
     [SerializeField] private Transform _projectCardContainer;
+    [SerializeField] private GameObject _projectListEmpty;
     [SerializeField] private Button _newProjectButton;
     [Space(10)]
     [SerializeField] private GameObject _modalPanel;
@@ -35,17 +36,46 @@ public class RoomPlanView : MonoBehaviour
     [SerializeField] private Button _backButton2;
     [SerializeField] private Material _defaultWallMaterial;
 
+    [Header("PlayGround : Model List")]
+    [SerializeField] private ScrollRect _modelScrollRect;
+    [SerializeField] private RoomPlanModelButtonView _modelButtonPrefab;
+    [SerializeField] private Transform _modelButtonContainer;
+    [SerializeField] private GameObject _modelListLoadingIndicator;
+    [SerializeField] private GameObject _placementHint;
 
     [Header("Common")]
     [SerializeField] private Button _backButton;
 
     private RoomPlanPresenter _presenter;
+    private RenderTexture _viewportRenderTexture;
+    private UnityAction<Vector2> _onModelScroll;
 
 
     #region Unity Life Cycle
     private void Awake()
     {
         _presenter = new RoomPlanPresenter(this, _viewportTouch, _defaultWallMaterial);
+    }
+
+    private void OnEnable()
+    {
+        if (_modelScrollRect)
+            _modelScrollRect.onValueChanged.AddListener(OnModelScrollChanged);
+    }
+
+    private void OnDisable()
+    {
+        if (_modelScrollRect)
+            _modelScrollRect.onValueChanged.RemoveListener(OnModelScrollChanged);
+    }
+
+    private void OnDestroy()
+    {
+        if (_viewportRenderTexture != null)
+        {
+            _viewportRenderTexture.Release();
+            _viewportRenderTexture = null;
+        }
     }
     #endregion
 
@@ -69,6 +99,12 @@ public class RoomPlanView : MonoBehaviour
             return;
         }
         _editPage.SetActive(isActive);
+
+        if (isActive)
+        {
+            Canvas.ForceUpdateCanvases();
+            InitViewportRenderTexture();
+        }
     }
 
     public ProjectCardView CreateProjectCard()
@@ -89,6 +125,12 @@ public class RoomPlanView : MonoBehaviour
         {
             Destroy(child.gameObject);
         }
+    }
+
+    public void SetActiveProjectListEmpty(bool isActive)
+    {
+        if (_projectListEmpty != null)
+            _projectListEmpty.SetActive(isActive);
     }
 
     public void SetActiveModal(bool isActive)
@@ -173,9 +215,112 @@ public class RoomPlanView : MonoBehaviour
         return (_viewportCameraTarget.position, _viewportCameraTarget.rotation.eulerAngles);
     }
 
+    // ── Placement Hint ─────────────────────────────────────
+
+    public void SetPlacementHintActive(bool isActive)
+    {
+        if (_placementHint) _placementHint.SetActive(isActive);
+    }
+
+    // ── Model List ──────────────────────────────────────────
+
+    public void SetModelScrollListener(UnityAction<Vector2> onScroll)
+    {
+        _onModelScroll = onScroll;
+    }
+
+    public RoomPlanModelButtonView CreateModelButton()
+    {
+        if (_modelButtonPrefab == null || _modelButtonContainer == null)
+        {
+            Debug.LogWarning("RoomPlanView: Model button prefab or container is missing.");
+            return null;
+        }
+        return Instantiate(_modelButtonPrefab, _modelButtonContainer);
+    }
+
+    public void ClearModelButtons()
+    {
+        if (_modelButtonContainer == null) return;
+
+        foreach (Transform child in _modelButtonContainer)
+            Destroy(child.gameObject);
+    }
+
+    public void SetModelListLoading(bool isLoading)
+    {
+        if (_modelListLoadingIndicator) _modelListLoadingIndicator.SetActive(isLoading);
+    }
+
+    // ── Viewport Raycast Helper ─────────────────────────────
+
+    public bool TryGetViewportRay(Vector2 screenPoint, out Ray ray)
+    {
+        ray = default;
+        if (_viewportImage == null || _viewportCamera == null)
+        {
+            Debug.LogWarning("[TryGetViewportRay] _viewportImage or _viewportCamera is null.");
+            return false;
+        }
+
+        // RawImage의 4 모서리를 스크린 좌표로 변환
+        var corners = new Vector3[4]; // [0]=BL, [1]=TL, [2]=TR, [3]=BR
+        _viewportImage.rectTransform.GetWorldCorners(corners);
+
+        Canvas canvas = _viewportImage.canvas;
+        Camera uiCamera = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            ? canvas.worldCamera
+            : null;
+
+        Vector2 screenBL = uiCamera == null
+            ? (Vector2)corners[0]
+            : RectTransformUtility.WorldToScreenPoint(uiCamera, corners[0]);
+        Vector2 screenTR = uiCamera == null
+            ? (Vector2)corners[2]
+            : RectTransformUtility.WorldToScreenPoint(uiCamera, corners[2]);
+
+        float w = screenTR.x - screenBL.x;
+        float h = screenTR.y - screenBL.y;
+        if (Mathf.Approximately(w, 0f) || Mathf.Approximately(h, 0f)) return false;
+
+        float u = (screenPoint.x - screenBL.x) / w;
+        float v = (screenPoint.y - screenBL.y) / h;
+
+        Debug.Log($"[TryGetViewportRay] screen={screenPoint} | BL={screenBL} TR={screenTR} | uv=({u:F3},{v:F3})");
+
+        if (u < 0f || u > 1f || v < 0f || v > 1f) return false;
+
+        ray = _viewportCamera.ViewportPointToRay(new Vector3(u, v, 0f));
+        Debug.DrawRay(ray.origin, ray.direction * 200f, Color.cyan, 4f);
+        return true;
+    }
+
     #endregion
 
     #region Private Methods
+
+    private void OnModelScrollChanged(Vector2 pos)
+    {
+        _onModelScroll?.Invoke(pos);
+    }
+
+    private void InitViewportRenderTexture()
+    {
+        if (_viewportImage == null || _viewportCamera == null) return;
+
+        Rect rect = _viewportImage.rectTransform.rect;
+        int width = Mathf.Max(1, Mathf.RoundToInt(rect.width));
+        int height = Mathf.Max(1, Mathf.RoundToInt(rect.height));
+
+        if (_viewportRenderTexture != null)
+            _viewportRenderTexture.Release();
+
+        _viewportRenderTexture = new RenderTexture(width, height, 24);
+        _viewportRenderTexture.Create();
+
+        _viewportCamera.targetTexture = _viewportRenderTexture;
+        _viewportImage.texture = _viewportRenderTexture;
+    }
 
     private void SetButton(Button button, UnityAction action)
     {

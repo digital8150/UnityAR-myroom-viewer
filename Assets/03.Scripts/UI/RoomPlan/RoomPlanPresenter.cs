@@ -1,13 +1,36 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+using System.Xml;
+using GLTFast;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
+using UnityEngine.Networking;
+using UnityEngine.UI;
 
 public class RoomPlanPresenter
 {
+    private const int MODELS_PER_PAGE = 10;
+
     private readonly RoomPlanView _view;
     private readonly TouchView _touchView;
     private string _imagePath = null;
 
     private Vector3 _currentPosition;
     private float _currentRotationY;
+
+    private int _modelPageIndex = 0;
+    private bool _isModelLoading = false;
+    private bool _isLastModelPage = false;
+    private RoomPlanModelButtonView _selectedModelButton = null;
+
+    // ë‹¤ìš´ë¡œë“œ ì™„ë£Œ í›„ íƒ­ ëŒ€ê¸° ì¤‘ì¸ ëª¨ë¸ì˜ ë¡œì»¬ ê²½ë¡œ
+    private string _pendingLocalPath = null;
+    // ì”¬ì— ë°°ì¹˜ ì™„ë£Œëœ ëª¨ë¸ ëª©ë¡
+    private readonly List<GameObject> _placedModels = new List<GameObject>();
+    // ë°”ë‹¥ íŒì •ìš© ë³´ì´ì§€ ì•ŠëŠ” Collider
+    private GameObject _floorColliderGo = null;
 
     public RoomPlanPresenter(RoomPlanView view, TouchView touchView, Material defaultWallMaterial)
     {
@@ -17,8 +40,9 @@ public class RoomPlanPresenter
 
         _touchView.OnSingleDrag += HandlePositionUpdate;
         _touchView.OnDoubleDrag += HandleRotationUpdate;
+        _touchView.OnTap += OnViewportTap;
 
-        var(initPos, initRot) = _view.GetViewPortCameraTransform();
+        var (initPos, initRot) = _view.GetViewPortCameraTransform();
         _currentPosition = initPos;
         _currentRotationY = initRot.y;
 
@@ -53,12 +77,18 @@ public class RoomPlanPresenter
     {
         HideAllPages();
         _view.SetActiveProjectListPage(true);
+        ClearAllPlaced();
+        DestroyFloorCollider();
+        LoadProjectList();
     }
 
     private void ShowEditPage()
     {
         HideAllPages();
         _view.SetActiveEditPage(true);
+        _view.SetModelScrollListener(OnModelScrollChanged);
+        CreateFloorCollider();
+        ResetModelList();
     }
     #endregion
 
@@ -81,16 +111,16 @@ public class RoomPlanPresenter
     private void OnModalSelectDefaultClicked()
     {
         _view.SetActiveModal(false);
-
+        //TODO : ê¸°ë³¸ ë„ë©´ìœ¼ë¡œ ë°© ìƒì„± í”Œë¡œìš°ë¡œ ì´ë™
     }
 
     private void OnModalLoadFloorClicked()
     {
         _view.SetActiveModal(false);
-        //load image and upload
+
         if (NativeFilePicker.IsFilePickerBusy())
         {
-            PopupView.Instance.ShowMessage("ÆÄÀÏ ¼±ÅÃ±â°¡ ÇöÀç »ç¿ë ÁßÀÔ´Ï´Ù. Àá½Ã ÈÄ ´Ù½Ã ½ÃµµÇØÁÖ¼¼¿ä.");
+            PopupView.Instance.ShowMessage("íŒŒì¼ ì„ íƒê¸°ê°€ ì´ë¯¸ ì‚¬ìš© ì¤‘ì…ë‹ˆë‹¤. ì ì‹œ í›„ ë‹¤ì‹œ ì‹œë„í•´ì£¼ì„¸ìš”.");
             return;
         }
 
@@ -98,67 +128,318 @@ public class RoomPlanPresenter
         {
             NativeFilePicker.PickFile((path) =>
             {
-                if (path == null)
-                {
+                if (path == null) return;
 
-                }
-                else if (!IsValidFileExtensioin(path))
+                if (!IsValidFileExtension(path))
                 {
-                    PopupView.Instance.ShowMessage("À¯È¿ÇÏÁö ¾ÊÀº ÆÄÀÏ Çü½ÄÀÔ´Ï´Ù. PNG, JPG, JPEG ÆÄÀÏ¸¸ ¼±ÅÃÇØÁÖ¼¼¿ä.");
+                    PopupView.Instance.ShowMessage("ìœ íš¨í•˜ì§€ ì•Šì€ íŒŒì¼ í˜•ì‹ì…ë‹ˆë‹¤. PNG, JPG, JPEG íŒŒì¼ë§Œ ì„ íƒí•˜ì„¸ìš”.");
+                    return;
                 }
-                else
-                {
-                    //¼±ÅÃ ¿Ï·á ÀÌÈÄ ·ÎÁ÷
-                    Debug.Log($"¼±ÅÃµÈ ÆÄÀÏ °æ·Î: {path}");
-                    _imagePath = path;
-                    PopupView.Instance.Presenter.ShowYesNo("¼±ÅÃÇÑ ÀÌ¹ÌÁö·Î ¹æÀ» »ı¼ºÇÏ½Ã°Ú½À´Ï±î?", OnUserConfirmedGeneration, OnUserDeniedGeneration);
-                }
+
+                _imagePath = path;
+                PopupView.Instance.Presenter.ShowYesNo(
+                    "ì„ íƒí•œ ì´ë¯¸ì§€ë¡œ ë°©ì„ ìƒì„±í•˜ì‹œê² ìŠµë‹ˆê¹Œ?",
+                    OnUserConfirmedGeneration,
+                    OnUserDeniedGeneration
+                );
             });
         }
         catch (System.Exception e)
         {
-            PopupView.Instance.ShowMessage($"ÆÄÀÏ ¼±ÅÃ Áß ¿À·ù°¡ ¹ß»ıÇß½À´Ï´Ù: {e.Message}");
+            PopupView.Instance.ShowMessage($"íŒŒì¼ ì„ íƒ ì¤‘ ì˜¤ë¥˜ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤: {e.Message}");
         }
     }
     #endregion
 
+    #region Project List
+    private async void LoadProjectList()
+    {
+        _view.ClearProjectCards();
+        _view.SetActiveProjectListEmpty(false);
+
+        var (code, json) = await RoomPlanService.GetMyRoom3DList();
+
+        if (code != 200 || string.IsNullOrEmpty(json))
+        {
+            Debug.LogWarning($"í”„ë¡œì íŠ¸ ëª©ë¡ ì¡°íšŒ ì‹¤íŒ¨ ({code})");
+            _view.SetActiveProjectListEmpty(true);
+            return;
+        }
+
+        var page = JsonConvert.DeserializeObject<PageDto<Room3DDto>>(json);
+        if (page?.content == null || page.content.Count == 0)
+        {
+            _view.SetActiveProjectListEmpty(true);
+            return;
+        }
+
+        foreach (var room in page.content)
+        {
+            var card = _view.CreateProjectCard();
+            if (card == null) continue;
+
+            card.SetCardText(room.roomName);
+            var captured = room;
+            card.SetButtonAction(() => OnProjectCardClicked(captured));
+
+            if (!string.IsNullOrEmpty(room.drawingImageUrl))
+                LoadCardImage(card, room.drawingImageUrl);
+        }
+    }
+
+    private async void LoadCardImage(ProjectCardView card, string imageUrl)
+    {
+        using var request = UnityWebRequestTexture.GetTexture(imageUrl);
+        await request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success) return;
+
+        var texture = DownloadHandlerTexture.GetContent(request);
+        var sprite = Sprite.Create(
+            texture,
+            new Rect(0, 0, texture.width, texture.height),
+            new Vector2(0.5f, 0.5f)
+        );
+        card.SetCardImage(sprite);
+    }
+
+    private async void OnProjectCardClicked(Room3DDto room)
+    {
+        if (string.IsNullOrEmpty(room.drawingXmlUrl))
+        {
+            PopupView.Instance.ShowMessage("ì €ì¥ëœ ë„ë©´ XMLì´ ì—†ìŠµë‹ˆë‹¤.");
+            return;
+        }
+
+        PopupView.Instance.SetLoadingPannelActive(true);
+        string xmlContent = await FetchText(room.drawingXmlUrl);
+        PopupView.Instance.SetLoadingPannelActive(false);
+
+        if (string.IsNullOrEmpty(xmlContent))
+        {
+            PopupView.Instance.ShowMessage("ë„ë©´ ë°ì´í„°ë¥¼ ë¶ˆëŸ¬ì˜¤ëŠ” ë° ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.");
+            return;
+        }
+
+        ConstructRoom(xmlContent);
+        ShowEditPage();
+    }
+    #endregion
+
+    #region Model List
+
+    private void ResetModelList()
+    {
+        _modelPageIndex = 0;
+        _isModelLoading = false;
+        _isLastModelPage = false;
+        _selectedModelButton = null;
+        _view.ClearModelButtons();
+        LoadNextModelPage();
+    }
+
+    private async void LoadNextModelPage()
+    {
+        if (_isModelLoading || _isLastModelPage) return;
+
+        _isModelLoading = true;
+        _view.SetModelListLoading(true);
+
+        try
+        {
+            var (code, json) = await GalleryService.GetSharedSearch(_modelPageIndex, MODELS_PER_PAGE);
+            if (code != 200 || string.IsNullOrEmpty(json))
+            {
+                Debug.LogWarning($"[RoomPlanPresenter] ëª¨ë¸ ëª©ë¡ ì¡°íšŒ ì‹¤íŒ¨ ({code})");
+                return;
+            }
+
+            var data = JsonConvert.DeserializeObject<ModelSearchResponse>(json);
+            if (data?.content == null) return;
+
+            foreach (var model in data.content)
+            {
+                var btn = _view.CreateModelButton();
+                if (btn == null) continue;
+
+                var captured = model;
+                btn.MainButton.onClick.AddListener(() => OnModelButtonClicked(btn, captured));
+
+                if (!string.IsNullOrEmpty(model.thumbnailUrl))
+                    LoadModelButtonImage(btn, model.thumbnailUrl);
+            }
+
+            _isLastModelPage = data.last;
+            _modelPageIndex++;
+        }
+        finally
+        {
+            _isModelLoading = false;
+            _view.SetModelListLoading(false);
+        }
+    }
+
+    private async void LoadModelButtonImage(RoomPlanModelButtonView btn, string url)
+    {
+        using var request = UnityWebRequestTexture.GetTexture(url);
+        await request.SendWebRequest();
+        if (request.result != UnityWebRequest.Result.Success) return;
+
+        var tex = DownloadHandlerTexture.GetContent(request);
+        var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+        btn.SetImage(sprite);
+    }
+
+    private void OnModelScrollChanged(Vector2 pos)
+    {
+        if (pos.y <= 0.1f) LoadNextModelPage();
+    }
+
+    private async void OnModelButtonClicked(RoomPlanModelButtonView btn, ModelData model)
+    {
+        if (_selectedModelButton != null) _selectedModelButton.SetSelected(false);
+        _selectedModelButton = btn;
+        btn.SetSelected(true);
+
+        _pendingLocalPath = null;
+        _view.SetPlacementHintActive(false);
+
+        PopupView.Instance.SetLoadingPannelActive(true);
+        var (code, localPath) = await ProjectInspectService.GetModel3DFile(model.link);
+        PopupView.Instance.SetLoadingPannelActive(false);
+
+        if (code != 200 || string.IsNullOrEmpty(localPath))
+        {
+            PopupView.Instance.ShowMessage("ëª¨ë¸ íŒŒì¼ì„ ë¶ˆëŸ¬ì˜¤ëŠ” ë° ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.");
+            btn.SetSelected(false);
+            _selectedModelButton = null;
+            return;
+        }
+
+        // ë‹¤ìš´ë¡œë“œë§Œ ì™„ë£Œ â€” ìŠ¤í°ì€ íƒ­ ì‹œ ìˆ˜í–‰
+        _pendingLocalPath = localPath;
+        _view.SetPlacementHintActive(true);
+    }
+
+    private void OnViewportTap(Vector2 screenPos)
+    {
+        Debug.Log($"[OnViewportTap] called. pending={(string.IsNullOrEmpty(_pendingLocalPath) ? "null" : "set")} screenPos={screenPos}");
+        if (_pendingLocalPath == null) return;
+
+        if (!_view.TryGetViewportRay(screenPos, out Ray ray))
+        {
+            Debug.LogWarning("[OnViewportTap] TryGetViewportRay returned false.");
+            return;
+        }
+
+        Vector3 spawnPos;
+        if (Physics.Raycast(ray, out RaycastHit hit, 1000f, ~0, QueryTriggerInteraction.UseGlobal))
+        {
+            Debug.Log($"[OnViewportTap] Raycast HIT: '{hit.collider.name}' at {hit.point}, normal={hit.normal}");
+            spawnPos = hit.point;
+        }
+        else
+        {
+            Debug.LogWarning("[OnViewportTap] Raycast missed â€” projecting onto y=0 plane.");
+            if (ray.direction.y >= 0f) return;
+            float t = -ray.origin.y / ray.direction.y;
+            spawnPos = ray.origin + ray.direction * t;
+        }
+
+        string pathToSpawn = _pendingLocalPath;
+        _pendingLocalPath = null;
+        _view.SetPlacementHintActive(false);
+        if (_selectedModelButton != null) _selectedModelButton.SetSelected(false);
+        _selectedModelButton = null;
+
+        SpawnAndPlace(pathToSpawn, spawnPos);
+    }
+
+    private async void SpawnAndPlace(string localPath, Vector3 position)
+    {
+        var go = await LoadGlbAsGameObject(localPath);
+        if (go == null)
+        {
+            PopupView.Instance.ShowMessage("ëª¨ë¸ ë°°ì¹˜ì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.");
+            return;
+        }
+        go.transform.position = position;
+        _placedModels.Add(go);
+        Debug.Log($"[RoomPlanPresenter] ë°°ì¹˜ ì™„ë£Œ. í˜„ì¬ ë°°ì¹˜ ëª¨ë¸ ìˆ˜: {_placedModels.Count}");
+    }
+
+    private static async Task<GameObject> LoadGlbAsGameObject(string localPath)
+    {
+        var go = new GameObject("PlacedModel");
+        go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+
+        var gltf = new GltfImport();
+        if (!await gltf.Load(localPath) || !await gltf.InstantiateMainSceneAsync(go.transform))
+        {
+            Object.Destroy(go);
+            return null;
+        }
+        return go;
+    }
+
+    private void CreateFloorCollider()
+    {
+        DestroyFloorCollider();
+        _floorColliderGo = new GameObject("__FloorCollider");
+        _floorColliderGo.transform.position = new Vector3(0f, -0.01f, 0f);
+        var col = _floorColliderGo.AddComponent<BoxCollider>();
+        col.size = new Vector3(500f, 0.02f, 500f);
+    }
+
+    private void DestroyFloorCollider()
+    {
+        if (_floorColliderGo != null)
+        {
+            Object.Destroy(_floorColliderGo);
+            _floorColliderGo = null;
+        }
+    }
+
+    private void ClearAllPlaced()
+    {
+        _pendingLocalPath = null;
+        _view.SetPlacementHintActive(false);
+        if (_selectedModelButton != null)
+        {
+            _selectedModelButton.SetSelected(false);
+            _selectedModelButton = null;
+        }
+        foreach (var go in _placedModels)
+            if (go != null) Object.Destroy(go);
+        _placedModels.Clear();
+    }
+
+    #endregion
+
     #region Touch Input Handles
-    // 1) ÇÑ ¼Õ°¡¶ô: ·ÎÄÃ ÁÂÇ¥°è ±âÁØ À§Ä¡ ÀÌµ¿ (YÃà °íÁ¤)
     private void HandlePositionUpdate(Vector2 delta)
     {
-        // °¨µµ¸¦ ³·Ãç µĞ°¨ÇÏ°Ô Á¶Àı (0.01f ~ 0.05f »çÀÌ ÃßÃµ)
         float sensitivity = 0.02f;
 
-        // View·ÎºÎÅÍ Ä«¸Ş¶ó(¶Ç´Â Å¸°Ù)ÀÇ ÇöÀç ¹æÇâ º¤ÅÍ¸¦ °¡Á®¿È
         var (pos, rot) = _view.GetViewPortCameraTransform();
         Quaternion currentRot = Quaternion.Euler(rot);
 
-        // Ä«¸Ş¶óÀÇ Right(¿ìÃø)¿Í Forward(Àü¹æ) º¤ÅÍ °è»ê
         Vector3 right = currentRot * Vector3.right;
         Vector3 forward = currentRot * Vector3.forward;
 
-        // YÃà ÀÌµ¿À» ¸·±â À§ÇØ º¤ÅÍÀÇ Y°ªÀ» Á¦°ÅÇÏ°í Á¤±ÔÈ­
         right.y = 0;
         forward.y = 0;
         right.Normalize();
         forward.Normalize();
 
-        // ·ÎÄÃ ¹æÇâ ±â¹İ º¯È­·® °è»ê
-        // delta.x´Â ÁÂ¿ì(right), delta.y´Â ¾ÕµÚ(forward) ÀÌµ¿¿¡ ¸ÅÇÎ
-        Vector3 localMovement = (right * delta.x * sensitivity) + (forward * delta.y * sensitivity);
-
-        _currentPosition += localMovement;
-
+        _currentPosition += (right * delta.x * sensitivity) + (forward * delta.y * sensitivity);
         SetPosition(_currentPosition);
     }
 
-    // 2) µÎ ¼Õ°¡¶ô: Áß½ÉÁ¡ µå·¡±× ¾×¼ÇÀ¸·Î YÃà È¸Àü
     private void HandleRotationUpdate(Vector2 centerDelta, float rotationDelta)
     {
-        // È¸Àü °¨µµ Á¶Àı (0.5f°¡ ³Ê¹« ºü¸£¸é ´õ ³·Ãß¼¼¿ä)
         float rotSensitivity = 0.3f;
         _currentRotationY -= rotationDelta * rotSensitivity;
-
         SetRotation(_currentRotationY);
     }
 
@@ -169,13 +450,12 @@ public class RoomPlanPresenter
 
     private void SetRotation(float yAngle)
     {
-        // YÃà È¸Àü¸¸ Àû¿ë
         _view.SetViewPortCameraRotation(new Vector3(0, yAngle, 0));
     }
     #endregion
 
     #region Private Helpers
-    private bool IsValidFileExtensioin(string path)
+    private bool IsValidFileExtension(string path)
     {
         string lowerPath = path.ToLower();
         return lowerPath.EndsWith(".png") || lowerPath.EndsWith(".jpg") || lowerPath.EndsWith(".jpeg");
@@ -184,32 +464,106 @@ public class RoomPlanPresenter
     private async void OnUserConfirmedGeneration()
     {
         PopupView.Instance.SetLoadingPannelActive(true);
-        Debug.Log("User confirmed model generation");
-        var(resultCode, responseJson) = await RoomPlanService.PostUpload(_imagePath);
-        Debug.Log($"Upload request response code : {resultCode}");
 
-        if (resultCode != 200)
+        string roomName = Path.GetFileNameWithoutExtension(_imagePath);
+        var (code, json) = await RoomPlanService.CreateRoom3DFromImage(_imagePath, roomName);
+
+        if (code != 201 || string.IsNullOrEmpty(json))
         {
-            PopupView.Instance.ShowMessage("ÀÌ¹ÌÁö ¾÷·Îµå Áß ¿À·ù°¡ ¹ß»ıÇß½À´Ï´Ù");
+            PopupView.Instance.ShowMessage("ì´ë¯¸ì§€ ì—…ë¡œë“œ ë° ë°© ìƒì„±ì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.");
             PopupView.Instance.SetLoadingPannelActive(false);
             return;
         }
 
-        ConstructRoom(responseJson);
+        var dto = JsonConvert.DeserializeObject<Room3DDto>(json);
         PopupView.Instance.SetLoadingPannelActive(false);
-        ShowEditPage();
 
+        if (dto == null || dto.success == false)
+        {
+            PopupView.Instance.ShowMessage("ë°© ë„ë©´ ìƒì„±ì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.");
+            return;
+        }
+
+        if (dto.success == null || string.IsNullOrEmpty(dto.drawingXmlUrl))
+        {
+            PopupView.Instance.ShowMessage("ì—…ë¡œë“œ ì™„ë£Œ. ë„ë©´ ìƒì„± ì¤‘ì…ë‹ˆë‹¤.\nì ì‹œ í›„ ëª©ë¡ì—ì„œ í™•ì¸í•˜ì„¸ìš”.");
+            ShowProjectListPage();
+            return;
+        }
+
+        string xmlContent = await FetchText(dto.drawingXmlUrl);
+
+        if (string.IsNullOrEmpty(xmlContent))
+        {
+            PopupView.Instance.ShowMessage("ë„ë©´ ë°ì´í„°ë¥¼ ë¶ˆëŸ¬ì˜¤ëŠ” ë° ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.");
+            return;
+        }
+
+        ConstructRoom(xmlContent);
+        ShowEditPage();
     }
 
     private void OnUserDeniedGeneration()
     {
-        Debug.Log("»ç¿ëÀÚ°¡ 3D ¸ğµ¨ »ı¼ºÀ» °ÅºÎÇß½À´Ï´Ù.");
         _imagePath = null;
     }
 
-    private void ConstructRoom(string FloorPlanJson)
+    private async Task<string> FetchText(string url)
     {
-        Analyze.data = FloorPlanJson;
+        using var request = UnityWebRequest.Get(url);
+        await request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError($"FetchText ì‹¤íŒ¨: {request.error} | URL: {url}");
+            return null;
+        }
+        return request.downloadHandler.text;
+    }
+
+    private string XmlToJson(string xmlContent)
+    {
+        var doc = new XmlDocument();
+        doc.LoadXml(xmlContent);
+
+        var imageNode = doc.SelectSingleNode("//Image");
+        float averageDoor = float.Parse(
+            imageNode.Attributes["averageDoor"].Value,
+            System.Globalization.CultureInfo.InvariantCulture);
+
+        var rawNodes = doc.SelectNodes("//Object");
+        var objects = new List<XmlNode>();
+        foreach (XmlNode node in rawNodes)
+            objects.Add(node);
+        objects.Sort((a, b) =>
+            int.Parse(a.Attributes["index"].Value)
+                .CompareTo(int.Parse(b.Attributes["index"].Value)));
+
+        var points = new JArray();
+        var classes = new JArray();
+        foreach (var obj in objects)
+        {
+            points.Add(new JObject
+            {
+                ["x1"] = double.Parse(obj.Attributes["x1"].Value, System.Globalization.CultureInfo.InvariantCulture),
+                ["y1"] = double.Parse(obj.Attributes["y1"].Value, System.Globalization.CultureInfo.InvariantCulture),
+                ["x2"] = double.Parse(obj.Attributes["x2"].Value, System.Globalization.CultureInfo.InvariantCulture),
+                ["y2"] = double.Parse(obj.Attributes["y2"].Value, System.Globalization.CultureInfo.InvariantCulture)
+            });
+            classes.Add(new JObject { ["name"] = obj.Attributes["type"].Value });
+        }
+
+        return new JObject
+        {
+            ["points"] = points,
+            ["classes"] = classes,
+            ["averageDoor"] = averageDoor
+        }.ToString(Newtonsoft.Json.Formatting.None);
+    }
+
+    private void ConstructRoom(string xmlContent)
+    {
+        Analyze.data = XmlToJson(xmlContent);
         GameObject builder = new GameObject("RoomBuilder");
         builder.AddComponent<Builder>();
     }

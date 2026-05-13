@@ -17,6 +17,15 @@ public class CommunityView : MonoBehaviour
         public string categoryName;
     }
 
+    [Serializable]
+    class FilterCategoryButton
+    {
+        public Button Button;
+        public Image BackgroundImage;
+        public TextMeshProUGUI Text;
+        public string categoryName;
+    }
+
     [Header("Prefabs")]
     [SerializeField] private NoImagePostView _noImagePostViewPrefab;
     [SerializeField] private WithImagePostView _withImagePostViewPrefab;
@@ -42,6 +51,21 @@ public class CommunityView : MonoBehaviour
     [SerializeField] private Toggle _scopePublicToggle;
     [SerializeField] private Toggle _scopePrivateToggle;
     [SerializeField] private Button _submitButton;
+
+    [Header("Filter")]
+    [SerializeField] private GameObject _filterPanel;
+    [SerializeField] private Button _showFilter;
+    [SerializeField] private Button _latestButton;
+    [SerializeField] private ProceduralImage _latestButtonImage;
+    [SerializeField] private TextMeshProUGUI _latestButtonText;
+    [SerializeField] private Button _oldestButton;
+    [SerializeField] private ProceduralImage _oldestButtonImage;
+    [SerializeField] private TextMeshProUGUI _oldestButtonText;
+    [SerializeField] private Button _resetFilterButton;
+    [SerializeField] private Button _applyFilterButton;
+    [SerializeField] private TMP_InputField _nameFilterInput;
+    [SerializeField] private Color _buttonActiveColor;
+    [SerializeField] private FilterCategoryButton[] _categoryFilterButtons = new FilterCategoryButton[5];
 
     private CommunityPresenter _presenter;
 
@@ -78,8 +102,34 @@ public class CommunityView : MonoBehaviour
         _scopePublicToggle.onValueChanged.AddListener(isOn => { if (isOn) _presenter.OnScopeSelected("PUBLIC"); });
         _scopePrivateToggle.onValueChanged.AddListener(isOn => { if (isOn) _presenter.OnScopeSelected("PRIVATE"); });
 
+        if (_showFilter) _showFilter.onClick.AddListener(_presenter.OnShowFilterClicked);
+        if (_latestButton) _latestButton.onClick.AddListener(() => _presenter.OnLatestButtonClicked(_latestButtonImage, _latestButtonText));
+        if (_oldestButton) _oldestButton.onClick.AddListener(() => _presenter.OnOldestButtonClicked(_oldestButtonImage, _oldestButtonText));
+        if (_resetFilterButton) _resetFilterButton.onClick.AddListener(_presenter.OnResetFilterButtonClicked);
+        if (_applyFilterButton) _applyFilterButton.onClick.AddListener(_presenter.OnApplyFilterButtonClicked);
+
+        if (_categoryFilterButtons != null)
+        {
+            for (int i = 0; i < _categoryFilterButtons.Length; i++)
+            {
+                int idx = i;
+                if (_categoryFilterButtons[idx]?.Button)
+                    _categoryFilterButtons[idx].Button.onClick.AddListener(() => _presenter.OnFilterCategorySelected(_categoryFilterButtons[idx].categoryName));
+            }
+        }
+
         _page3pannel.SetActive(false);
-        _presenter.LoadPage();
+
+        int pendingPostId = Utils.SceneHistory.ConsumePendingPostId();
+        if (pendingPostId > 0)
+        {
+            _presenter.LoadPage();
+            _presenter.OpenDetail(pendingPostId);
+        }
+        else
+        {
+            _presenter.LoadPage();
+        }
     }
 
     private void OnDestroy()
@@ -170,6 +220,12 @@ public class CommunityView : MonoBehaviour
         }
     }
 
+    public void SetPostForm(string title, string content)
+    {
+        _titleInputField.text = title;
+        _contentInputField.text = content;
+    }
+
     public string GetCommentInputText() => _commentInputField ? _commentInputField.text : string.Empty;
 
     public void ClearCommentInput()
@@ -193,4 +249,64 @@ public class CommunityView : MonoBehaviour
     {
         if (_commentInputField) _commentInputField.ActivateInputField();
     }
+
+    public void RebuildPictureButtonLayout()
+    {
+        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_CommunityAddPictureParent.parent);
+    }
+
+    #region filter
+    public void SetActiveButtonColor(ProceduralImage image, TextMeshProUGUI text)
+    {
+        if (!image || !text || !_latestButtonImage || !_latestButtonText || !_oldestButtonImage || !_oldestButtonText)
+        {
+            Debug.LogError($"[CommunityView.cs] Something was null when updating Active Button Color");
+            return;
+        }
+
+        _latestButtonImage.color = Color.white;
+        _latestButtonText.color = _buttonActiveColor;
+        _oldestButtonImage.color = Color.white;
+        _oldestButtonText.color = _buttonActiveColor;
+
+        image.color = _buttonActiveColor;
+        text.color = Color.white;
+    }
+
+    public void SetFilterPannelActive(bool isActive)
+    {
+        if (_filterPanel) _filterPanel.SetActive(isActive);
+        else Debug.LogError($"[CommunityView.cs] Filter Panel is not assigned.", this);
+    }
+
+    public void ResetFilterCategoryButtons()
+    {
+        if (_categoryFilterButtons != null)
+        {
+            foreach (var btn in _categoryFilterButtons)
+            {
+                if (btn?.BackgroundImage) btn.BackgroundImage.color = Color.white;
+                if (btn?.Text) btn.Text.color = _buttonActiveColor;
+            }
+        }
+    }
+
+    public void UpdateFilterCategoryVisual(string selectedCategoryName)
+    {
+        if (_categoryFilterButtons == null) return;
+
+        for (int i = 0; i < _categoryFilterButtons.Length; i++)
+        {
+            if (_categoryFilterButtons[i] == null) continue;
+
+            bool selected = _categoryFilterButtons[i].categoryName == selectedCategoryName;
+            if (_categoryFilterButtons[i].BackgroundImage)
+                _categoryFilterButtons[i].BackgroundImage.color = selected ? _buttonActiveColor : Color.white;
+            if (_categoryFilterButtons[i].Text)
+                _categoryFilterButtons[i].Text.color = selected ? Color.white : _buttonActiveColor;
+        }
+    }
+
+    public string GetNameFilterText() => _nameFilterInput ? _nameFilterInput.text : string.Empty;
+    #endregion
 }

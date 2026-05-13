@@ -78,3 +78,9 @@ public class UpdateCommentRequest
 {
     public string content;
 }
+
+[Serializable]
+public class LikedStatusResponse
+{
+    public bool liked;
+}

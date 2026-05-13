@@ -85,6 +85,12 @@ public class PageableInfo
 }
 
 [Serializable]
+public class BookmarkStatusResponse
+{
+    public bool bookmarked;
+}
+
+[Serializable]
 public class ModelSearchResponse
 {
     public List<ModelData> content; // 여기에 실제 데이터 리스트가 들어옴!

@@ -7,7 +7,23 @@ namespace Utils
     {
         // 씬 이름을 차곡차곡 쌓을 스택
         private static Stack<string> history = new Stack<string>();
-        private const string HOME_SCENE = "Home"; 
+        private const string HOME_SCENE = "Home";
+        private const string COMMUNITY_SCENE = "Community";
+
+        private static int _pendingPostId = -1;
+
+        public static void ChangeToCommunityWithPost(int postId)
+        {
+            _pendingPostId = postId;
+            ChangeScene(COMMUNITY_SCENE);
+        }
+
+        public static int ConsumePendingPostId()
+        {
+            int id = _pendingPostId;
+            _pendingPostId = -1;
+            return id;
+        }
 
         // 1) 씬 이동: 현재 씬을 기록하고 새로운 씬으로 이동
         public static void ChangeScene(string sceneName)

@@ -22,6 +22,14 @@ public class MyPageView : MonoBehaviour
     [SerializeField] private Button _goToMyRoom;
     [SerializeField] private Button _goToNewProject;
 
+    [Header("Page 3 : Post List")]
+    [SerializeField] private GameObject _postListPage;
+    [SerializeField] private Button _postListBackButton;
+    [SerializeField] private TextMeshProUGUI _postListTitle;
+    [SerializeField] private ScrollRect _postListScrollRect;
+    [SerializeField] private GameObject _postListLayoutParent;
+    [SerializeField] private NoImagePostView _noImagePostViewPrefab;
+
     [Header("Page 2 : Profile Edit Page")]
     [SerializeField] private Image _profilePictureImage2;
     [SerializeField] private AspectRatioFitter _profilePictureImageARF2;
@@ -55,6 +63,9 @@ public class MyPageView : MonoBehaviour
             _nicknameInputField.onValueChanged.AddListener(_presenter.OnInputFieldValueChanged);
             _nicknameInputField.onEndEdit.AddListener(_presenter.OnInputFieldEndEdit);
         }
+        if (_postListBackButton) _postListBackButton.onClick.AddListener(_presenter.OnPostListBackButtonClicked);
+        if (_postListScrollRect) _postListScrollRect.onValueChanged.AddListener(_presenter.OnPostListScrollChanged);
+        if (_postListPage) _postListPage.SetActive(false);
         _presenter.InitializeView();
     }
 
@@ -77,6 +88,8 @@ public class MyPageView : MonoBehaviour
             _nicknameInputField.onValueChanged.RemoveAllListeners();
             _nicknameInputField.onEndEdit.RemoveAllListeners();
         }
+        if (_postListBackButton) _postListBackButton.onClick.RemoveAllListeners();
+        if (_postListScrollRect) _postListScrollRect.onValueChanged.RemoveAllListeners();
     }
 
     #endregion
@@ -141,6 +154,30 @@ public class MyPageView : MonoBehaviour
     {
         if (_nicknameInputField != null)
             _nicknameInputField.text = nickname;
+    }
+
+    public void SetActivePostListPage(bool isActive, string title = "")
+    {
+        if (_postListPage) _postListPage.SetActive(isActive);
+        if (_postListTitle && !string.IsNullOrEmpty(title)) _postListTitle.text = title;
+    }
+
+    public NoImagePostView CreatePostListItem()
+    {
+        if (_noImagePostViewPrefab == null || _postListLayoutParent == null) return null;
+        return Instantiate(_noImagePostViewPrefab, _postListLayoutParent.transform);
+    }
+
+    public void ClearPostListItems()
+    {
+        if (_postListLayoutParent == null) return;
+        for (int i = _postListLayoutParent.transform.childCount - 1; i >= 0; i--)
+            Destroy(_postListLayoutParent.transform.GetChild(i).gameObject);
+    }
+
+    public float GetPostListScrollPosition()
+    {
+        return _postListScrollRect ? _postListScrollRect.verticalNormalizedPosition : 1f;
     }
 
     #endregion

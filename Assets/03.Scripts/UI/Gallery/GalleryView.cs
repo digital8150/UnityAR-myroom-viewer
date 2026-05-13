@@ -22,6 +22,9 @@ public class GalleryView : MonoBehaviour
     [Header("Buttons")]
     [SerializeField] private Button _backButton;
 
+    [Header("Bookmark Mode")]
+    [SerializeField] private GameObject _searchUI;
+
     [Header("Filter")]
     [SerializeField] private GameObject _filterPanel;
     [SerializeField] private Button _showFilter;
@@ -38,11 +41,13 @@ public class GalleryView : MonoBehaviour
 
     private List<GalleryListItemView> _listItemViews;
     private GalleryPresenter _presenter;
+    private RectTransform _scrollRectTransform;
 
     private void Awake()
     {
         _listItemViews = new List<GalleryListItemView>();
         _presenter = new GalleryPresenter(this);
+        _scrollRectTransform = _scrollRect != null ? _scrollRect.GetComponent<RectTransform>() : null;
 
 
     }
@@ -181,6 +186,23 @@ public class GalleryView : MonoBehaviour
     {
         if (_filterPanel) _filterPanel.SetActive(isActive);
         else Debug.LogError($"[ProjectsView.cs] Filter Panel is not assigned.", this);
+    }
+
+    public void SetSearchUIActive(bool isActive)
+    {
+        if (_searchUI == null) return;
+
+        if (!isActive && _scrollRectTransform != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            RectTransform searchRect = _searchUI.GetComponent<RectTransform>();
+            float height = searchRect != null ? searchRect.rect.height : 0f;
+            Vector2 offsetMax = _scrollRectTransform.offsetMax;
+            offsetMax.y += height;
+            _scrollRectTransform.offsetMax = offsetMax;
+        }
+
+        _searchUI.SetActive(isActive);
     }
     #endregion
 
