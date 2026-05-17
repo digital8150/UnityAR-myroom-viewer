@@ -6,6 +6,7 @@ public class ARPlacePresenter
 {
     private ARPlaceView _view;
     private ARPlaceCore _core;
+    private bool _isCapturing;
 
     public ARPlacePresenter(ARPlaceView view, ARPlaceCore core)
     {
@@ -27,6 +28,9 @@ public class ARPlacePresenter
 
     public void OnShutterButtonClicked()
     {
+        if (_isCapturing) return;
+        _isCapturing = true;
+        _view.SetShutterInteractable(false);
         _view.StartCoroutine(TakeScreenshotAndSave());
     }
 
@@ -50,32 +54,29 @@ public class ARPlacePresenter
 
     private IEnumerator TakeScreenshotAndSave()
     {
-        // 1. 프레임 끝까지 대기 (렌더링이 완료된 후 캡처해야 함)
         yield return new WaitForEndOfFrame();
 
-        // 2. 화면 크기의 Texture2D 생성
-        int width = Screen.width;
-        int height = Screen.height;
-        Texture2D screenShot = new Texture2D(width, height, TextureFormat.RGB24, false);
+        Texture2D screenShot = _view.CaptureARCamera();
+        if (screenShot == null)
+        {
+            Debug.LogError("AR 카메라 캡처 실패: ARPlaceView에 _arCamera가 할당되지 않았습니다.");
+            _view.SetShutterInteractable(true);
+            _isCapturing = false;
+            yield break;
+        }
 
-        // 3. 현재 카메라의 화면을 읽어옴
-        Rect rect = new Rect(0, 0, width, height);
-        screenShot.ReadPixels(rect, 0, 0);
-        screenShot.Apply();
-
-        // 4. 바이트 배열로 인코딩 (PNG)
-        byte[] bytes = screenShot.EncodeToPNG();
-
-        // 5. 갤러리에 저장 (Native Gallery 라이브러리 권장)
-        // 직접 구현 시 경로 설정 및 권한 처리가 복잡하므로 라이브러리 사용을 추천합니다.
         string fileName = "AR_Snapshot_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png";
 
-        /* NativeGallery.SaveImageToGallery(bytes, "AR Photos", fileName, (success, path) => {
-            Debug.Log("저장 결과: " + success + " 경로: " + path);
-        });
-        */
+        _view.PlayFlashEffect();
 
-        // 메모리 해제
-        UnityEngine.Object.Destroy(screenShot);
+        NativeGallery.SaveImageToGallery(
+            screenShot, "AR Photos", fileName,
+            (success, path) =>
+            {
+                Debug.Log($"갤러리 저장: success={success}, path={path}");
+                _view.SetShutterInteractable(true);
+                _isCapturing = false;
+                UnityEngine.Object.Destroy(screenShot);
+            });
     }
 }
