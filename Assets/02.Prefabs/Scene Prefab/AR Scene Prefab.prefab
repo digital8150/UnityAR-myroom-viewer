@@ -5990,7 +5990,7 @@ MonoBehaviour:
   <trackablesChanged>k__BackingField:
     m_PersistentCalls:
       m_Calls: []
-  m_PointCloudPrefab: {fileID: 797957090142344719}
+  m_PointCloudPrefab: {fileID: 0}
 --- !u!114 &5120003407351547552
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6858,11 +6858,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b15f82cc229284894964d2d30806969d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.XR.ARFoundation::UnityEngine.XR.ARFoundation.AROcclusionManager
-  m_HumanSegmentationStencilMode: 1
-  m_HumanSegmentationDepthMode: 1
-  m_EnvironmentDepthMode: 1
+  m_HumanSegmentationStencilMode: 3
+  m_HumanSegmentationDepthMode: 2
+  m_EnvironmentDepthMode: 3
   m_EnvironmentDepthTemporalSmoothing: 1
-  m_OcclusionPreferenceMode: 0
+  m_OcclusionPreferenceMode: 2
 --- !u!1 &6434575711085312736
 GameObject:
   m_ObjectHideFlags: 0

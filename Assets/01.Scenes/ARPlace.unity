@@ -532,7 +532,7 @@ MonoBehaviour:
   m_HumanSegmentationDepthMode: 2
   m_EnvironmentDepthMode: 3
   m_EnvironmentDepthTemporalSmoothing: 1
-  m_OcclusionPreferenceMode: 0
+  m_OcclusionPreferenceMode: 2
 --- !u!1 &112780651
 GameObject:
   m_ObjectHideFlags: 0
