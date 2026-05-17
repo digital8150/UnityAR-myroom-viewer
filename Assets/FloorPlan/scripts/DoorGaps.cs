@@ -168,6 +168,7 @@ public class DoorGaps : MonoBehaviour
             float otherY1 = points[1];
             float otherX2 = points[2];
             GameObject obj = new GameObject("wall");
+            obj.transform.SetParent(transform, false);
             obj.AddComponent<MeshFilter>();
             obj.AddComponent<MeshRenderer>();
             WallMesh temp = obj.AddComponent<WallMesh>();
@@ -184,6 +185,7 @@ public class DoorGaps : MonoBehaviour
             float otherY1 = points[1];
             float otherX2 = points[2];
             GameObject obj = new GameObject("wall");
+            obj.transform.SetParent(transform, false);
             obj.AddComponent<MeshFilter>();
             obj.AddComponent<MeshRenderer>();
             WallMesh temp = obj.AddComponent<WallMesh>();
@@ -204,6 +206,7 @@ public class DoorGaps : MonoBehaviour
             float otherY1 = points[1];
             float otherX2 = points[2];
             GameObject obj = new GameObject("wall");
+            obj.transform.SetParent(transform, false);
             obj.AddComponent<MeshFilter>();
             obj.AddComponent<MeshRenderer>();
             WallMesh temp = obj.AddComponent<WallMesh>();
@@ -221,6 +224,7 @@ public class DoorGaps : MonoBehaviour
             float otherY1 = points[1];
             float otherX2 = points[2];
             GameObject obj = new GameObject("wall");
+            obj.transform.SetParent(transform, false);
             obj.AddComponent<MeshFilter>();
             obj.AddComponent<MeshRenderer>();
             WallMesh temp = obj.AddComponent<WallMesh>();

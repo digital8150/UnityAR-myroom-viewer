@@ -116,12 +116,13 @@ public class Builder : MonoBehaviour
                 continue;
             }
             GameObject gameObj = new GameObject(classes[count].name);
-           
+            gameObj.transform.SetParent(transform, false);
+
             componentsAdder(gameObj, point, classes[count].name);
 
         }
         count = -1;
-       
+
         foreach (Point point in points)
         {
             count++;
@@ -130,6 +131,7 @@ public class Builder : MonoBehaviour
                 continue;
             }
             GameObject gameObj = new GameObject(classes[count].name);
+            gameObj.transform.SetParent(transform, false);
             componentsAdder(gameObj, point, classes[count].name);
             
 
@@ -153,11 +155,6 @@ public class Builder : MonoBehaviour
             WallMesh temp = obj.GetComponent<WallMesh>();
             temp.setPoints((float)p.x1, (float)p.y1, (float)p.x2, (float)p.y2);
             temp.setGameObjectReference(obj);
-            if (wallMat != null)
-            {
-                Debug.Log("벽에 색칠하기");
-                renderer.material = wallMat;
-            }
         }
         if (className.Equals("door"))
         {

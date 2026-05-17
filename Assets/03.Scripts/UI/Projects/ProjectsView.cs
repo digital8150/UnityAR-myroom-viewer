@@ -142,7 +142,7 @@ public class ProjectsView : MonoBehaviour
     /// <param name="name">프로젝트 이름</param>
     /// <param name="modelId">데이터 고유 식별자 (조회 기준)</param>
     /// <param name="status">현재 진행 상태 텍스트</param>
-    public ViewSlotsView UpdateOrAddViewItem(Sprite imageSprite, string name, int modelId, string status, UnityAction buttonHandler)
+    public ViewSlotsView UpdateOrAddViewItem(Sprite imageSprite, string name, int modelId, string status, UnityAction buttonHandler, Action longPressHandler = null)
     {
         var find = _slotsViewList.Find(item => item.ModelId == modelId);
 
@@ -153,7 +153,8 @@ public class ProjectsView : MonoBehaviour
             viewSlot.UpdateProjectNameText(name);
             if(imageSprite) viewSlot.UpdateThumbnailImage(imageSprite);
             viewSlot.UpdateStatusText(status);
-            viewSlot.GetButton()?.onClick.AddListener(buttonHandler);
+            viewSlot.SetClickHandler(buttonHandler);
+            viewSlot.SetLongPressHandler(longPressHandler);
             _slotsViewList.Add(viewSlot);
             return viewSlot;
         }
@@ -161,6 +162,8 @@ public class ProjectsView : MonoBehaviour
         find.UpdateProjectNameText(name);
         if(imageSprite) find.UpdateThumbnailImage(imageSprite);
         find.UpdateStatusText(status);
+        find.SetClickHandler(buttonHandler);
+        find.SetLongPressHandler(longPressHandler);
         return find;
     }
 

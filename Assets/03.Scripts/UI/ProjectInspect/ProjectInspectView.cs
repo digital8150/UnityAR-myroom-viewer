@@ -42,6 +42,7 @@ public class ProjectInspectView : MonoBehaviour
     [SerializeField] private Toggle _isPublicToggle;
     [SerializeField] private Button _saveButton;
     [SerializeField] private Button _onArPlaceButton;
+    [SerializeField] private Button _attachImageButton;
     [SerializeField] private ScrollRect _scrollRect;
     [SerializeField] private GameObject _shadowCatchPlane;
     [SerializeField] private List<CategoryButton> _categoryButtons;
@@ -67,6 +68,7 @@ public class ProjectInspectView : MonoBehaviour
         if(_reTryBtn) _reTryBtn.onClick.AddListener(_presenter.OnRetryClicked);
         if(_saveButton) _saveButton.onClick.AddListener(async () => await _presenter.OnSaveClicked(false));
         if(_onArPlaceButton) _onArPlaceButton.onClick.AddListener(_presenter.OnARPlaceClicked);
+        if(_attachImageButton) _attachImageButton.onClick.AddListener(_presenter.OnAttachImageClicked);
     }
 
     private void Update()
@@ -81,6 +83,9 @@ public class ProjectInspectView : MonoBehaviour
         if(_reTryBtn) _reTryBtn.onClick.RemoveAllListeners();
         if(_saveButton) _saveButton.onClick.RemoveAllListeners();
         if(_onArPlaceButton) _onArPlaceButton.onClick.RemoveAllListeners();
+        if(_attachImageButton) _attachImageButton.onClick.RemoveAllListeners();
+
+        _presenter?.Cleanup();
 
         foreach(var item in _categoryButtons)
         {

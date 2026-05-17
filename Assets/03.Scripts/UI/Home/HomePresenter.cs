@@ -160,7 +160,12 @@ public class HomePresenter
     {
         int userId = int.Parse(Utils.JWTUtils.GetUserId());
         var userName = await MemberService.GetMemberUsernameByMemberId(userId);
+        var profilePictureUrl = await MemberService.GetMemberProfilePicUrlByMemberId(userId);
         _view.SetSideBarUserName(userName);
+        if (!string.IsNullOrEmpty(profilePictureUrl))
+        {
+            _view.SetSideBarProfilePicture(await Utils.ImageUtils.LoadSpriteFromUrlAsync(profilePictureUrl));
+        }
     }
     #endregion
 

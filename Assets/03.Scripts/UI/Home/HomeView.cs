@@ -44,6 +44,8 @@ public class HomeView : MonoBehaviour
     [SerializeField] private Button _project2Button;
 
     [Header("Side Bar")]
+    [SerializeField] private Image _profilePictureImage;
+    [SerializeField] private AspectRatioFitter _profilePictureImageARF;
     [SerializeField] private TextMeshProUGUI _userNameText;
     [SerializeField] private Button _openSidebarBtn;
     [SerializeField] private Button _sidebarGoToMyPage;
@@ -100,6 +102,9 @@ public class HomeView : MonoBehaviour
         if(_sidebarGoToMyProjects) _sidebarGoToMyProjects.onClick.AddListener(_presenter.OnSidebarGoToMyProjectsClicked);
         if(_sidebarGoToCommunity) _sidebarGoToCommunity.onClick.AddListener(_presenter.OnSidebarGoToCommunityClicked);
         if(_sidebarGoToRoomPlan3D) _sidebarGoToRoomPlan3D.onClick.AddListener(_presenter.OnSidebarGoToRoomPlan3DClicked);
+
+        if(_scanButton) _scanButton.onClick.AddListener(_presenter.OnToGenerate3DClicked);
+        if(_toRoomPlan3D) _toRoomPlan3D.onClick.AddListener(_presenter.OnSidebarGoToRoomPlan3DClicked);
 
         _presenter.InitializeView();
     }
@@ -227,6 +232,12 @@ public class HomeView : MonoBehaviour
     public void SetSideBarUserName(string userName)
     {
         if(_userNameText) _userNameText.text = userName;
+    }
+
+    public void SetSideBarProfilePicture(Sprite sprite)
+    {
+        if(_profilePictureImage) _profilePictureImage.sprite = sprite;
+        if(_profilePictureImageARF) _profilePictureImageARF.aspectRatio = sprite.rect.width / sprite.rect.height;   
     }
 
     private IEnumerator AniamteSidebar(bool open)

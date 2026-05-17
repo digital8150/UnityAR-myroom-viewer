@@ -17,6 +17,10 @@ public class WebsocketController : MonoBehaviour
     public event Action<string> OnModel3DGenerated;
     public event Action<string> OnModel3DGenerateFailed;
     public event Action<string> OnAIRecommendReceived;
+    public event Action<string> OnRoom3DGenerationSuccess;
+    public event Action<string> OnRoom3DGenerationFailed;
+    public event Action<string> OnRoom3DGenerationProgress;
+    public event Action<string> OnModel3DDimensionsByImageReceived;
 
     private ClientWebSocket _webSocket = null;
     private CancellationTokenSource _cts;
@@ -104,6 +108,8 @@ public class WebsocketController : MonoBehaviour
             {
                 await SubscribeAsync($"/topic/model3d/{_userId}");
                 await SubscribeAsync($"/topic/recommand/{_userId}");
+                await SubscribeAsync($"/topic/room3d/{_userId}");
+                await SubscribeAsync($"/topic/model-dimensions/{_userId}");
             }
             await SubscribeAsync("/topic/model3d/all");
             await SubscribeAsync("/topic/test");
@@ -222,9 +228,16 @@ public class WebsocketController : MonoBehaviour
         string[] parts = raw.Split(new string[] { "\n\n" }, 2, StringSplitOptions.None);
         if (parts.Length < 2) return;
 
+        string headers = parts[0];
         string body = parts[1].TrimEnd('\0');
 
         Debug.Log($"[WebSocket Receieved Body] {body}");
+
+        if (headers.Contains("destination:/topic/model-dimensions/"))
+        {
+            UnityMainThreadDispatcher.Enqueue(() => OnModel3DDimensionsByImageReceived?.Invoke(body));
+            return;
+        }
 
         if (body.Contains("MODEL_GENERATION_SUCCESS"))
         {
@@ -247,6 +260,21 @@ public class WebsocketController : MonoBehaviour
             UnityMainThreadDispatcher.Enqueue(() => {
                 OnAIRecommendReceived?.Invoke(body);
             });
+        }
+
+        if (body.Contains("ROOM3D_GENERATION_SUCCESS"))
+        {
+            UnityMainThreadDispatcher.Enqueue(() => OnRoom3DGenerationSuccess?.Invoke(body));
+        }
+
+        if (body.Contains("ROOM3D_GENERATION_FAILED"))
+        {
+            UnityMainThreadDispatcher.Enqueue(() => OnRoom3DGenerationFailed?.Invoke(body));
+        }
+
+        if (body.Contains("ROOM3D_GENERATION_PROGRESS"))
+        {
+            UnityMainThreadDispatcher.Enqueue(() => OnRoom3DGenerationProgress?.Invoke(body));
         }
     }
 

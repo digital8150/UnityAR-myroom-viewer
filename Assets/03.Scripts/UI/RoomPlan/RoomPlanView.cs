@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
@@ -35,6 +36,9 @@ public class RoomPlanView : MonoBehaviour
     [SerializeField] private List<CategoryButton> _categoryButtons;
     [SerializeField] private Button _backButton2;
     [SerializeField] private Material _defaultWallMaterial;
+    [SerializeField] private GameObject _defaultRoomPrefab;
+    [SerializeField] private GameObject _floorPlane;
+    [SerializeField] private Sprite _defaultProjectCardThumbnail;
 
     [Header("PlayGround : Model List")]
     [SerializeField] private ScrollRect _modelScrollRect;
@@ -42,13 +46,29 @@ public class RoomPlanView : MonoBehaviour
     [SerializeField] private Transform _modelButtonContainer;
     [SerializeField] private GameObject _modelListLoadingIndicator;
     [SerializeField] private GameObject _placementHint;
+    [SerializeField] private Color _selectedCategoryColor = new Color(0.2f, 0.6f, 1f);
+
+    [Header("PlayGround : Furniture Controls")]
+    [SerializeField] private Button _deleteFurnitureButton;
+
+    [Header("Name Input Modal")]
+    [SerializeField] private GameObject _nameInputModal;
+    [SerializeField] private TMP_Text _nameInputTitle;
+    [SerializeField] private TMP_InputField _nameInputField;
+    [SerializeField] private Button _nameInputConfirmButton;
+    [SerializeField] private Button _nameInputCancelButton;
 
     [Header("Common")]
     [SerializeField] private Button _backButton;
+    [SerializeField] private Material _selectionIndicatorMaterial;
+
+    public Material SelectionIndicatorMaterial => _selectionIndicatorMaterial;
+    public Sprite DefaultProjectCardThumbnail => _defaultProjectCardThumbnail;
 
     private RoomPlanPresenter _presenter;
     private RenderTexture _viewportRenderTexture;
     private UnityAction<Vector2> _onModelScroll;
+    private GameObject _defaultRoomInstance;
 
 
     #region Unity Life Cycle
@@ -143,11 +163,11 @@ public class RoomPlanView : MonoBehaviour
         _modalPanel.SetActive(isActive);
     }
 
-    public void SetButtonActions(UnityAction onNewProject, UnityAction onBack)
+    public void SetButtonActions(UnityAction onNewProject, UnityAction onBack, UnityAction onEditBack)
     {
         SetButton(_newProjectButton, onNewProject);
         SetButton(_backButton, onBack);
-        SetButton(_backButton2, onBack);
+        SetButton(_backButton2, onEditBack);
     }
 
     public void SetModalActions(UnityAction onCancel, UnityAction onSelectDefault, UnityAction onLoadFloor)
@@ -185,6 +205,92 @@ public class RoomPlanView : MonoBehaviour
         SetButton(button, onClick);
     }
 
+    public IReadOnlyList<string> GetCategoryNames()
+    {
+        var names = new List<string>(_categoryButtons.Count);
+        foreach (var c in _categoryButtons) names.Add(c.CategoryName);
+        return names;
+    }
+
+    public void SetSelectedCategoryVisual(string selectedCategory)
+    {
+        foreach (var item in _categoryButtons)
+        {
+            if (item.Button == null) continue;
+            var text = item.Button.GetComponentInChildren<TextMeshProUGUI>();
+            if (text == null) continue;
+            text.color = item.CategoryName == selectedCategory ? _selectedCategoryColor : Color.black;
+        }
+    }
+
+    // ── Furniture Controls ──────────────────────────────────
+
+    public void SetDeleteFurnitureButtonAction(UnityAction onDelete)
+    {
+        SetButton(_deleteFurnitureButton, onDelete);
+    }
+
+    public void SetDeleteFurnitureButtonActive(bool isActive)
+    {
+        if (_deleteFurnitureButton != null)
+            _deleteFurnitureButton.gameObject.SetActive(isActive);
+    }
+
+    // ── Name Input Modal ───────────────────────────────────
+
+    public void SetActiveNameInputModal(bool isActive, string title = null, string initialName = "")
+    {
+        if (_nameInputModal == null)
+        {
+            Debug.LogWarning("RoomPlanView: _nameInputModal is null.");
+            return;
+        }
+        _nameInputModal.SetActive(isActive);
+        if (!isActive) return;
+
+        if (_nameInputTitle != null && title != null) _nameInputTitle.text = title;
+        if (_nameInputField != null) _nameInputField.text = initialName ?? "";
+    }
+
+    public string GetNameInputValue()
+    {
+        return _nameInputField != null ? _nameInputField.text : string.Empty;
+    }
+
+    public void SetNameInputActions(UnityAction onConfirm, UnityAction onCancel)
+    {
+        SetButton(_nameInputConfirmButton, onConfirm);
+        SetButton(_nameInputCancelButton, onCancel);
+    }
+
+    // ── Default Room / Floor Plane ─────────────────────────
+
+    public void SetFloorPlaneActive(bool isActive)
+    {
+        if (_floorPlane != null) _floorPlane.SetActive(isActive);
+    }
+
+    public GameObject InstantiateDefaultRoom()
+    {
+        DestroyDefaultRoom();
+        if (_defaultRoomPrefab == null)
+        {
+            Debug.LogWarning("RoomPlanView: _defaultRoomPrefab is null.");
+            return null;
+        }
+        _defaultRoomInstance = Instantiate(_defaultRoomPrefab);
+        return _defaultRoomInstance;
+    }
+
+    public void DestroyDefaultRoom()
+    {
+        if (_defaultRoomInstance != null)
+        {
+            Destroy(_defaultRoomInstance);
+            _defaultRoomInstance = null;
+        }
+    }
+
     public void SetViewPortCameraPosition(Vector3 position)
     {
         if(!_viewportCameraTarget)
@@ -203,6 +309,26 @@ public class RoomPlanView : MonoBehaviour
             return;
         }
         _viewportCameraTarget.rotation = Quaternion.Euler(rotation);
+    }
+
+    public float GetViewPortCameraFov()
+    {
+        if (!_viewportCamera)
+        {
+            Debug.LogError("Error : RoomPlanView: _viewportCamera reference is missing.");
+            return 60f;
+        }
+        return _viewportCamera.fieldOfView;
+    }
+
+    public void SetViewPortCameraFov(float fov)
+    {
+        if (!_viewportCamera)
+        {
+            Debug.LogError("Error : RoomPlanView: _viewportCamera reference is missing.");
+            return;
+        }
+        _viewportCamera.fieldOfView = fov;
     }
 
     public (Vector3 position, Vector3 rotation) GetViewPortCameraTransform()
@@ -308,14 +434,20 @@ public class RoomPlanView : MonoBehaviour
     {
         if (_viewportImage == null || _viewportCamera == null) return;
 
+        Canvas canvas = _viewportImage.canvas;
+        float scaleFactor = canvas != null ? canvas.scaleFactor : 1f;
+
         Rect rect = _viewportImage.rectTransform.rect;
-        int width = Mathf.Max(1, Mathf.RoundToInt(rect.width));
-        int height = Mathf.Max(1, Mathf.RoundToInt(rect.height));
+        int width = Mathf.Max(1, Mathf.RoundToInt(rect.width * scaleFactor));
+        int height = Mathf.Max(1, Mathf.RoundToInt(rect.height * scaleFactor));
 
         if (_viewportRenderTexture != null)
             _viewportRenderTexture.Release();
 
-        _viewportRenderTexture = new RenderTexture(width, height, 24);
+        _viewportRenderTexture = new RenderTexture(width, height, 24)
+        {
+            antiAliasing = 4
+        };
         _viewportRenderTexture.Create();
 
         _viewportCamera.targetTexture = _viewportRenderTexture;

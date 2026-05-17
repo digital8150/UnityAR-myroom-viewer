@@ -91,12 +91,14 @@ public class ProjectsPresenter : IDisposable
                 ModelSearchResponse data = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelSearchResponse>(jsonBody);
                 foreach (var item in data.content)
                 {
+                    var capturedId = item.id;
                     var itemView = _view.UpdateOrAddViewItem(
                         null,
                         item.name,
                         item.id,
                         TranslateStatus(item.status),
-                        () => OnButtonClicked(item.id));
+                        () => OnButtonClicked(capturedId),
+                        () => OnSlotLongPressed(capturedId));
 
                     LoadThumbnailAsync(itemView, item.thumbnailUrl);
                 }
@@ -178,5 +180,29 @@ public class ProjectsPresenter : IDisposable
     {
         ProjectInspectPresenter.SelectedModelId = modelId;
         Utils.SceneHistory.ChangeScene("ProjectInspect");
+    }
+
+    private void OnSlotLongPressed(int modelId)
+    {
+        PopupView.Instance.Presenter.ShowYesNo(
+            "이 모델을 삭제하시겠습니까?",
+            () => DeleteModel(modelId));
+    }
+
+    private async void DeleteModel(int modelId)
+    {
+        PopupView.Instance.SetLoadingPannelActive(true);
+        long code = await ProjectInspectService.DeleteModel3D(modelId);
+        PopupView.Instance.SetLoadingPannelActive(false);
+
+        if (code == 200 || code == 204)
+        {
+            PopupView.AddPopup(new PopupContext("모델이 삭제되었습니다.", PopupView.Instance.GreenCheckCircle));
+            RefreshView();
+        }
+        else
+        {
+            PopupView.Instance.ShowMessage($"모델 삭제에 실패했습니다. (code: {code})");
+        }
     }
 }

@@ -12,6 +12,10 @@ namespace Utils
 
         private static int _pendingPostId = -1;
 
+        public static bool HasHistory => history.Count > 0;
+
+        public static string PeekPrevious() => history.Count > 0 ? history.Peek() : null;
+
         public static void ChangeToCommunityWithPost(int postId)
         {
             _pendingPostId = postId;

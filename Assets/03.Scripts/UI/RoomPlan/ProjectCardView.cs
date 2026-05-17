@@ -1,9 +1,10 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class ProjectCardView : MonoBehaviour
+public class ProjectCardView : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
 {
     [Header("UI References")]
     [SerializeField] private Image _cardImage;
@@ -11,6 +12,13 @@ public class ProjectCardView : MonoBehaviour
 
     [SerializeField] private TextMeshProUGUI _cardText;
     [SerializeField] private Button _cardButton;
+
+    [Header("Long Press")]
+    [SerializeField] private float _longPressDuration = 0.7f;
+
+    private UnityAction _onLongPress;
+    private float _pressStartTime = -1f;
+    private bool _longPressFired = false;
 
     #region Public Methods
     public void SetCardImage(Sprite image)
@@ -48,5 +56,45 @@ public class ProjectCardView : MonoBehaviour
             _cardButton.onClick.AddListener(action);
         }
     }
+
+    public void SetLongPressAction(UnityAction action)
+    {
+        _onLongPress = action;
+    }
     #endregion
+
+    private void Update()
+    {
+        if (_longPressFired || _pressStartTime < 0f) return;
+        if (Time.unscaledTime - _pressStartTime < _longPressDuration) return;
+
+        _longPressFired = true;
+        // 롱프레스 발동 시 클릭 발화를 막기 위해 Button을 잠시 비활성화
+        if (_cardButton != null) _cardButton.interactable = false;
+        _onLongPress?.Invoke();
+    }
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        _pressStartTime = Time.unscaledTime;
+        _longPressFired = false;
+    }
+
+    public void OnPointerUp(PointerEventData eventData)
+    {
+        ResetPress();
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        ResetPress();
+    }
+
+    private void ResetPress()
+    {
+        _pressStartTime = -1f;
+        // 다음 입력에 대비해 다시 활성화
+        if (_longPressFired && _cardButton != null) _cardButton.interactable = true;
+        _longPressFired = false;
+    }
 }

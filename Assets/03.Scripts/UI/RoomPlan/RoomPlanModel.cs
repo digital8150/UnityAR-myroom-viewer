@@ -21,3 +21,28 @@ public class PageDto<T>
     public int size;
     public int number;
 }
+
+public class Room3DNotificationDto
+{
+    public string notificationType;
+    public long memberId;
+    public long room3dId;
+    public string drawingImageUrl;
+    public string xmlFileUrl;
+    public string status;
+    public string message;
+    public long timestamp;
+}
+
+[System.Serializable]
+public class PlacedFurniture
+{
+    public int modelId;
+    public string link;
+    public float dimWidth;
+    public float dimLength;
+    public float dimHeight;
+    public float posX, posY, posZ;
+    public float rotY;
+    public float userScale = 1f;
+}

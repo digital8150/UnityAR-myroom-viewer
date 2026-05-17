@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System;
+using System.IO;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -53,6 +54,135 @@ public class ProjectInspectPresenter
     }
 
     private bool _isDownloading = false;
+    private bool _isRequestingDimension = false;
+    private bool _isSubscribedToWebSocket = false;
+
+    [Serializable]
+    private class DimensionsImagePayload
+    {
+        [JsonProperty("model3d_id")] public int model3dId;
+        [JsonProperty("member_id")] public int memberId;
+        public string status;
+        public string message;
+        public DimensionsField dimensions;
+
+        [Serializable]
+        public class DimensionsField
+        {
+            public float width;
+            public float length;
+            public float depth;
+            public float height;
+            public string unit;
+        }
+    }
+
+    public void OnAttachImageClicked()
+    {
+        if (_isRequestingDimension)
+        {
+            PopupView.Instance.ShowMessage("이미 치수 추정 요청이 진행 중입니다.");
+            return;
+        }
+
+        if (NativeFilePicker.IsFilePickerBusy())
+        {
+            PopupView.Instance.ShowMessage("파일 선택기가 현재 사용 중입니다. 잠시 후 다시 시도해주세요.");
+            return;
+        }
+
+        try
+        {
+            NativeFilePicker.PickFile((path) =>
+            {
+                if (string.IsNullOrEmpty(path)) return;
+
+                string lower = path.ToLower();
+                if (!(lower.EndsWith(".png") || lower.EndsWith(".jpg") || lower.EndsWith(".jpeg")))
+                {
+                    PopupView.Instance.ShowMessage("유효하지 않은 파일 형식입니다. PNG, JPG, JPEG 파일만 선택해주세요.");
+                    return;
+                }
+
+                _ = RequestDimensionByImageAsync(path);
+            });
+        }
+        catch (Exception e)
+        {
+            PopupView.Instance.ShowMessage($"파일 선택 중 오류가 발생했습니다: {e.Message}");
+        }
+    }
+
+    private async Task RequestDimensionByImageAsync(string imagePath)
+    {
+        _isRequestingDimension = true;
+        PopupView.Instance.SetLoadingPannelActive(true);
+        try
+        {
+            byte[] imageBytes = await File.ReadAllBytesAsync(imagePath);
+            string fileName = Path.GetFileName(imagePath);
+            string mime = imagePath.ToLower().EndsWith(".png") ? "image/png" : "image/jpeg";
+
+            var (code, _) = await ProjectInspectService.RequestDimensionByImage(_selectedModelId, imageBytes, fileName, mime);
+            if (code < 200 || code >= 300)
+            {
+                PopupView.Instance.ShowMessage($"치수 추정 요청에 실패했습니다. (code: {code})");
+                _isRequestingDimension = false;
+                PopupView.Instance.SetLoadingPannelActive(false);
+                return;
+            }
+
+            PopupView.AddPopup(new PopupContext("이미지로부터 치수를 추정 중입니다...", PopupView.Instance.GreenCheckCircle));
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[ProjectInspectPresenter] RequestDimensionByImage error: {e}");
+            PopupView.Instance.ShowMessage("치수 추정 요청 중 오류가 발생했습니다.");
+            _isRequestingDimension = false;
+            PopupView.Instance.SetLoadingPannelActive(false);
+        }
+    }
+
+    private void HandleDimensionsByImageMessage(string body)
+    {
+        try
+        {
+            var payload = JsonConvert.DeserializeObject<DimensionsImagePayload>(body);
+            if (payload == null) return;
+            if (payload.model3dId != _selectedModelId) return;
+
+            _isRequestingDimension = false;
+            PopupView.Instance.SetLoadingPannelActive(false);
+
+            if (payload.status != "SUCCESS" || payload.dimensions == null)
+            {
+                PopupView.Instance.ShowMessage($"치수 추정에 실패했습니다. {payload.message}");
+                return;
+            }
+
+            ModelDimension dim = new ModelDimension
+            {
+                width = payload.dimensions.width,
+                height = payload.dimensions.height,
+                length = payload.dimensions.length != 0 ? payload.dimensions.length : payload.dimensions.depth
+            };
+            _view.SetSizeInputField(dim);
+            PopupView.AddPopup(new PopupContext("치수가 업데이트되었습니다.", PopupView.Instance.GreenCheckCircle));
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[ProjectInspectPresenter] Failed to parse dimensions payload: {e}");
+        }
+    }
+
+    public void Cleanup()
+    {
+        if (_isSubscribedToWebSocket && WebsocketController.Instance != null)
+        {
+            WebsocketController.Instance.OnModel3DDimensionsByImageReceived -= HandleDimensionsByImageMessage;
+            _isSubscribedToWebSocket = false;
+        }
+    }
 
     public async void OnARPlaceClicked()
     {
@@ -60,12 +190,12 @@ public class ProjectInspectPresenter
         if (string.IsNullOrEmpty(_modelData.link)) return;
 
         _isDownloading = true;
-        PopupView.Instance.ShowLoading(true);
+        PopupView.Instance.SetLoadingPannelActive(true);
 
         var (responseCode, modelPath) = await ProjectInspectService.GetModel3DFile(_modelData.link);
 
         _isDownloading = false;
-        PopupView.Instance.ShowLoading(false);
+        PopupView.Instance.SetLoadingPannelActive(false);
 
         if (responseCode != 200)
         {
@@ -174,6 +304,11 @@ public class ProjectInspectPresenter
 
     private async void ShowSuccessView(ModelData modelData, ModelDimension modelDimension)
     {
+        if (!_isSubscribedToWebSocket && WebsocketController.Instance != null)
+        {
+            WebsocketController.Instance.OnModel3DDimensionsByImageReceived += HandleDimensionsByImageMessage;
+            _isSubscribedToWebSocket = true;
+        }
 
         foreach (var item in _categoryButtons)
         {

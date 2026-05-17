@@ -168,6 +168,7 @@ public class WindowGaps : MonoBehaviour
    GameObject wall() {
         GameObject obj = new GameObject("wall1");
         obj.tag = "wall1";
+        obj.transform.SetParent(transform, false);
         obj.AddComponent<MeshFilter>();
         obj.AddComponent<MeshRenderer>();
         return obj;

@@ -72,6 +72,16 @@ public class ProjectInspectService : BaseService
         return await SendRequest(url, "GET");
     }
 
+    public static async Task<(long, string)> RequestDimensionByImage(int model3dId, byte[] imageBytes, string fileName = "image.jpg", string mimeType = "image/jpeg")
+    {
+        string url = $"{Utils.Settings.BaseUrl}/api/model3ds/{model3dId}/dimensions/request-by-image";
+
+        WWWForm form = new();
+        form.AddBinaryData("image", imageBytes, fileName, mimeType);
+
+        return await SendRequest(url, "POST", form: form);
+    }
+
     public static async Task<long> DeleteModel3D(int modelId)
     {
         string url = $"{Utils.Settings.BaseUrl}/api/model3ds/{modelId}";

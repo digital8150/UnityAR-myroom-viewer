@@ -67,6 +67,12 @@ public class WallMesh : MonoBehaviour
         }
 
         cube.AddComponent<Rigidbody>().isKinematic = true;
+
+        if (Builder.wallMat != null)
+        {
+            cube.GetComponent<MeshRenderer>().material = Builder.wallMat;
+        }
+
         addWallPaperPoints(cube);
       
        
