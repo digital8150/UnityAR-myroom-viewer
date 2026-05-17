@@ -84,6 +84,7 @@ public class PopupView : MonoBehaviour
     [SerializeField] private float _spinnerRotationSpeed = 360f; // 초당 회전 속도
 
     [Header("Keyboard Helper")]
+    [SerializeField] private bool _keyboardHelperEnabled = true;
     [SerializeField] private GameObject _keyboardHelperBG;
     [SerializeField] private TextMeshProUGUI _keyboardHelperText;
 
@@ -226,7 +227,7 @@ public class PopupView : MonoBehaviour
     {
         if(_keyboardHelperBG)
         {
-            _keyboardHelperBG.SetActive(active);
+            _keyboardHelperBG.SetActive(_keyboardHelperEnabled && active);
         }
         else
         {

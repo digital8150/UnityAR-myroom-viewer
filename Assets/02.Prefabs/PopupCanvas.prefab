@@ -676,6 +676,7 @@ MonoBehaviour:
   _animDuration: 0.3
   GreenCheckCircle: {fileID: 21300000, guid: f0d79e4c8d20237419f31bd4c5843466, type: 3}
   _spinnerRotationSpeed: -150
+  _keyboardHelperEnabled: 0
   _keyboardHelperBG: {fileID: 8703245876214323238}
   _keyboardHelperText: {fileID: 1858697842889497551}
 --- !u!1 &4327704191855235493

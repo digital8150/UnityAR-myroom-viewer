@@ -93,6 +93,8 @@ public class RoomPlanPresenter
 
         _view.SetDeleteFurnitureButtonAction(OnDeleteFurnitureClicked);
         _view.SetDeleteFurnitureButtonActive(false);
+
+        _view.SetInspectBackButtonAction(OnInspectBackClicked);
     }
 
     private void OnCategoryButtonClicked(string category)
@@ -119,6 +121,7 @@ public class RoomPlanPresenter
         _view.SetActiveModal(false);
         _view.SetActiveProjectListPage(false);
         _view.SetActiveEditPage(false);
+        _view.SetActiveInspectPage(false);
     }
 
     private void ShowProjectListPage()
@@ -473,6 +476,8 @@ public class RoomPlanPresenter
 
                 var captured = model;
                 btn.MainButton.onClick.AddListener(() => OnModelButtonClicked(btn, captured));
+                if (btn.InfoButton != null)
+                    btn.InfoButton.onClick.AddListener(() => OnModelInfoClicked(captured));
 
                 if (!string.IsNullOrEmpty(model.thumbnailUrl))
                     LoadModelButtonImage(btn, model.thumbnailUrl);
@@ -541,6 +546,39 @@ public class RoomPlanPresenter
         _pendingModelId = model.id;
         _pendingModelLink = model.link;
         _view.SetPlacementHintActive(true);
+    }
+
+    private async void OnModelInfoClicked(ModelData model)
+    {
+        PopupView.Instance.SetLoadingPannelActive(true);
+        var fileTask = ProjectInspectService.GetModel3DFile(model.link);
+        var dimTask = ProjectInspectService.GetModel3DDimension(model.id);
+        await Task.WhenAll(fileTask, dimTask);
+
+        var (code, localPath) = fileTask.Result;
+        if (code != 200 || string.IsNullOrEmpty(localPath))
+        {
+            PopupView.Instance.SetLoadingPannelActive(false);
+            PopupView.Instance.ShowMessage("모델 파일을 불러오는 데 실패했습니다.");
+            return;
+        }
+
+        var (dimCode, dimJson) = dimTask.Result;
+        ModelDimension dim = (dimCode == 200 && !string.IsNullOrEmpty(dimJson))
+            ? JsonConvert.DeserializeObject<ModelDimension>(dimJson)
+            : new ModelDimension();
+
+        _view.InspectView.SetContent(dim, model);
+        _view.InspectView.SpawnModel3D(localPath);
+        _view.SetActiveEditPage(false);
+        _view.SetActiveInspectPage(true);
+        PopupView.Instance.SetLoadingPannelActive(false);
+    }
+
+    private void OnInspectBackClicked()
+    {
+        _view.SetActiveInspectPage(false);
+        _view.SetActiveEditPage(true);
     }
 
     private void OnViewportTap(Vector2 screenPos)

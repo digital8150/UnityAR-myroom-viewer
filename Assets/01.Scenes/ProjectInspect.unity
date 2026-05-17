@@ -9298,6 +9298,8 @@ MonoBehaviour:
     bgImage: {fileID: 1356288357}
   _reTryBtn: {fileID: 1691971503}
   _generateFailReasonText: {fileID: 741293577}
+  _websiteCapturePrefab: {fileID: 5485344242122987925, guid: 268622729bd66c145a6f11ae3d003e77, type: 3}
+  _websiteCaptureParent: {fileID: 1523343154}
 --- !u!1 &1500134507
 GameObject:
   m_ObjectHideFlags: 0
@@ -9552,6 +9554,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1504187838}
   m_CullTransparentMesh: 1
+--- !u!1 &1523343153
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1523343154}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1523343154
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1523343153}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 747.5651, y: 1746.9583, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1554860464
 GameObject:
   m_ObjectHideFlags: 0
@@ -12777,3 +12810,4 @@ SceneRoots:
   - {fileID: 764820793}
   - {fileID: 1966677328}
   - {fileID: 1622618754}
+  - {fileID: 1523343154}

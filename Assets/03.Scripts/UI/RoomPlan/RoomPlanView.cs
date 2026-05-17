@@ -51,6 +51,13 @@ public class RoomPlanView : MonoBehaviour
     [Header("PlayGround : Furniture Controls")]
     [SerializeField] private Button _deleteFurnitureButton;
 
+    [Header("PlayGround : Inspect")]
+    [SerializeField] private GameObject _inspectPage;
+    [SerializeField] private ReadonlyProjectInspectView _inspectView;
+    [SerializeField] private Button _inspectBackButton;
+
+    public ReadonlyProjectInspectView InspectView => _inspectView;
+
     [Header("Name Input Modal")]
     [SerializeField] private GameObject _nameInputModal;
     [SerializeField] private TMP_Text _nameInputTitle;
@@ -234,6 +241,24 @@ public class RoomPlanView : MonoBehaviour
     {
         if (_deleteFurnitureButton != null)
             _deleteFurnitureButton.gameObject.SetActive(isActive);
+    }
+
+    // ── Inspect Page ───────────────────────────────────────
+
+    public void SetActiveInspectPage(bool isActive)
+    {
+        if (_inspectPage == null)
+        {
+            Debug.LogWarning("RoomPlanView: _inspectPage is null.");
+            return;
+        }
+        _inspectPage.SetActive(isActive);
+        if (!isActive && _inspectView != null) _inspectView.Cleanup();
+    }
+
+    public void SetInspectBackButtonAction(UnityAction onBack)
+    {
+        SetButton(_inspectBackButton, onBack);
     }
 
     // ── Name Input Modal ───────────────────────────────────

@@ -51,6 +51,10 @@ public class ProjectInspectView : MonoBehaviour
     [SerializeField] private Button _reTryBtn;
     [SerializeField] private TextMeshProUGUI _generateFailReasonText;
 
+    [Header("Website Capture")]
+    [SerializeField] private WebsiteCaptureView _websiteCapturePrefab;
+    [SerializeField] private Transform _websiteCaptureParent; // null 이면 root Canvas 위에 추가
+
     private ProjectInspectPresenter _presenter;
     private GameObject _spawnedModel; // 생성된 모델 참조용
 
@@ -273,6 +277,20 @@ public class ProjectInspectView : MonoBehaviour
             find.button.GetComponentInChildren<TextMeshProUGUI>().color = Color.white; // 선택된 카테고리 텍스트 색상 변경
         }
         
+    }
+
+    //--- Website Capture ---//
+    public bool OpenWebsiteCapture(string url, Action<byte[]> onResult)
+    {
+        if (_websiteCapturePrefab == null)
+        {
+            Debug.LogError("[ProjectInspectView] _websiteCapturePrefab is not assigned.");
+            return false;
+        }
+        Transform parent = _websiteCaptureParent != null ? _websiteCaptureParent : transform;
+        var instance = Instantiate(_websiteCapturePrefab, parent);
+        instance.Open(url, onResult);
+        return true;
     }
 
     //--- Failed Page ---//

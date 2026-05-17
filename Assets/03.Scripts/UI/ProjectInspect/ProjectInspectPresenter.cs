@@ -85,6 +85,14 @@ public class ProjectInspectPresenter
             return;
         }
 
+        string website = _view.GetWebsiteInputField();
+        if (IsValidHttpUrl(website))
+        {
+            bool opened = _view.OpenWebsiteCapture(website, OnWebsiteCaptured);
+            if (opened) return;
+            // 프리팹 미할당 등 실패 시 파일 선택 폴백으로 이어감
+        }
+
         if (NativeFilePicker.IsFilePickerBusy())
         {
             PopupView.Instance.ShowMessage("파일 선택기가 현재 사용 중입니다. 잠시 후 다시 시도해주세요.");
@@ -110,6 +118,48 @@ public class ProjectInspectPresenter
         catch (Exception e)
         {
             PopupView.Instance.ShowMessage($"파일 선택 중 오류가 발생했습니다: {e.Message}");
+        }
+    }
+
+    private static bool IsValidHttpUrl(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return false;
+        if (!Uri.TryCreate(s, UriKind.Absolute, out var uri)) return false;
+        return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
+    }
+
+    private void OnWebsiteCaptured(byte[] jpgBytes)
+    {
+        if (jpgBytes == null || jpgBytes.Length == 0)
+        {
+            // 사용자 취소거나 캡처 실패 — 별도 안내 없음(취소가 일반적인 케이스)
+            return;
+        }
+        _ = RequestDimensionByBytesAsync(jpgBytes, "website_capture.jpg", "image/jpeg");
+    }
+
+    private async Task RequestDimensionByBytesAsync(byte[] imageBytes, string fileName, string mime)
+    {
+        _isRequestingDimension = true;
+        PopupView.Instance.SetLoadingPannelActive(true);
+        try
+        {
+            var (code, _) = await ProjectInspectService.RequestDimensionByImage(_selectedModelId, imageBytes, fileName, mime);
+            if (code < 200 || code >= 300)
+            {
+                PopupView.Instance.ShowMessage($"치수 추정 요청에 실패했습니다. (code: {code})");
+                _isRequestingDimension = false;
+                PopupView.Instance.SetLoadingPannelActive(false);
+                return;
+            }
+            PopupView.AddPopup(new PopupContext("이미지로부터 치수를 추정 중입니다...", PopupView.Instance.GreenCheckCircle));
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[ProjectInspectPresenter] RequestDimensionByBytes error: {e}");
+            PopupView.Instance.ShowMessage("치수 추정 요청 중 오류가 발생했습니다.");
+            _isRequestingDimension = false;
+            PopupView.Instance.SetLoadingPannelActive(false);
         }
     }
 
@@ -224,7 +274,7 @@ public class ProjectInspectPresenter
         {
             name = _view.GetNameInputField(),
             description = _view.GetDescriptionInputField(),
-            shop_page_link = _view.GetWebsiteInputField(),
+            shopPageLink = _view.GetWebsiteInputField(),
             is_shared = _view.GetIsPublicToggle(),
             furniture_type = _selectedCategory
         };

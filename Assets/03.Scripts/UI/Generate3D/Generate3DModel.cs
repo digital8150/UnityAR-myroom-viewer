@@ -50,7 +50,7 @@ public class ModelUpdateData
     public bool is_shared;
     public string description;
     public string furniture_type;
-    public string shop_page_link;
+    public string shopPageLink;
 }
 
 [Serializable]
