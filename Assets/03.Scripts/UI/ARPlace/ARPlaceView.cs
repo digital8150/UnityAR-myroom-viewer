@@ -11,6 +11,10 @@ public class ARPlaceView : MonoBehaviour
     [SerializeField] private Button _shutterButton;
     [SerializeField] private Button _showDimensionButton;
     [SerializeField] private TextMeshProUGUI _showDimensionButtonText;
+    [SerializeField] private Button _showFurnitureListButton;
+
+    [Header("Furniture List")]
+    [SerializeField] private ARPlaceFurnitureListView _furnitureListView;
 
     [Header("Capture")]
     [SerializeField] private Camera _arCamera;
@@ -36,6 +40,8 @@ public class ARPlaceView : MonoBehaviour
     {
         if(_shutterButton) _shutterButton.onClick.AddListener(_presenter.OnShutterButtonClicked);
         if (_showDimensionButton) _showDimensionButton.onClick.AddListener(_presenter.OnShowDimensionClicked);
+        if (_showFurnitureListButton) _showFurnitureListButton.onClick.AddListener(_presenter.OnShowFurnitureListClicked);
+        if (_furnitureListView && _placeCore) _furnitureListView.Bind(_placeCore);
         _presenter.UpdateView();
     }
 
@@ -44,6 +50,21 @@ public class ARPlaceView : MonoBehaviour
         if(_cancleButton) _cancleButton.onClick.RemoveAllListeners();
         if(_shutterButton) _shutterButton.onClick.RemoveAllListeners();
         if(_showDimensionButton) _showDimensionButton.onClick.RemoveAllListeners();
+        if (_showFurnitureListButton) _showFurnitureListButton.onClick.RemoveAllListeners();
+        _presenter?.Dispose();
+    }
+
+    public void SetShowFurnitureListButtonActive(bool active)
+    {
+        if (_showFurnitureListButton)
+        {
+            _showFurnitureListButton.gameObject.SetActive(active);
+        }
+    }
+
+    public void ToggleFurnitureList()
+    {
+        if (_furnitureListView) _furnitureListView.Toggle();
     }
 
     public void SetShowDimensionButtonText(string text)

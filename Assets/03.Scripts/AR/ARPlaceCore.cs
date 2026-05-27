@@ -1,6 +1,8 @@
-﻿using GLTFast;
+using GLTFast;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 using UnityEngine.InputSystem.EnhancedTouch;
@@ -13,50 +15,76 @@ public class ARPlaceCore : MonoBehaviour
     [SerializeField] private ARRaycastManager _arRaycastManager;
     [SerializeField] private ARPlaneManager _arPlaneManager;
     [SerializeField] private AROcclusionManager _occlusionManager;
+    [SerializeField] private Camera _arCamera;
 
     [Header("Sensitivity Settings")]
     [SerializeField] private float _rotationSensitivity = 0.5f;
     [SerializeField] private float _heightSensitivity = 0.001f;
-    [SerializeField] private float _gestureThreshold = 20f; // 회전/스케일 판정 임계값
 
     [Header("Dimension UI")]
     [SerializeField] private bool _showDimensions = true;
-    [SerializeField] private GameObject _dimensionTextPrefab; // TMP_Text 프리팹 (World Space)
+    [SerializeField] private GameObject _dimensionTextPrefab;
     [SerializeField] private LineRenderer _widthLine;
     [SerializeField] private LineRenderer _lengthLine;
     [SerializeField] private LineRenderer _heightLine;
 
     [Header("New Gesture Settings")]
-    [SerializeField] private float _rotationDeadzone = 10f; // 회전 시작을 위한 최소 중심점 이동거리 (픽셀)
-    [SerializeField] private float _pinchDeadzone = 20f;     // 스케일 변경을 위한 최소 거리 변화 (픽셀)
+    [SerializeField] private float _rotationDeadzone = 10f;
+    [SerializeField] private float _pinchDeadzone = 20f;
+
+    [Header("Outline")]
+    [SerializeField] private Material _outlineMaterial;
+
+    [Header("Furniture Picking")]
+    [SerializeField] private LayerMask _furnitureLayer = ~0;
 
     private const float DimensionValidThreshold = 0.05f;
+    private const float DefaultDimensionCm = 50f;
 
-    // Static Data
+    // Static Data (하위 호환: 진입 직전에 세팅되면 첫 배치에 사용)
     public static string CurrentModelPath;
     public static ModelDimension CurrentModelDimension;
 
+    public event Action OnFirstFurniturePlaced;
+
     // Internal State
-    private GameObject _activeModel;
-    private List<ARRaycastHit> _hits = new List<ARRaycastHit>();
-    private bool _isModelLoading = false;
-    private bool _allowModelScaling = false;
+    private readonly List<PlacedFurniture> _placedFurnitures = new List<PlacedFurniture>();
+    private PlacedFurniture _selectedFurniture;
+    private bool _isModelLoading;
+    private bool _defaultModelPlaced;
+    private bool _hasDefaultEntry;
 
     // Touch States
-    private int _gestureMode = 0; // 0: None, 1: Rotate, 2: Scale
+    private List<ARRaycastHit> _hits = new List<ARRaycastHit>();
     private float _initialMidpointX;
     private float _initialMidpointY;
     private float _initialDistance;
     private float _initialHeight;
-    private float _yOffsetFromPlane = 0f;
+    private float _yOffsetFromPlane;
     private Quaternion _initialRotation;
     private Vector3 _initialScale;
 
-    // UI References
+    // Single-touch translation state
+    private bool _singleTouchActsOnSelected;
+
+    // Dimension UI references
     private TMP_Text _widthText, _heightText, _lengthText;
     private GameObject _uiContainer;
 
     public bool ShowDimensions { get => _showDimensions; set => _showDimensions = value; }
+    public bool HasAnyFurniture => _placedFurnitures.Count > 0;
+
+    private class PlacedFurniture
+    {
+        public GameObject Root;
+        public BoxCollider Collider;
+        public ModelDimension Dimension;
+        public bool AllowScaling;
+        public float YOffsetFromPlane;
+        public Renderer[] Renderers;
+        public Material[][] OriginalMaterials;
+        public bool OutlineApplied;
+    }
 
     #region Unity Lifecycle
 
@@ -65,39 +93,71 @@ public class ARPlaceCore : MonoBehaviour
 
     private void Start()
     {
-        if (!IsModelDimensionValid())
-        {
-            _allowModelScaling = true;
-            CurrentModelDimension = new ModelDimension(50, 50, 50);
-        }
+        _hasDefaultEntry = !string.IsNullOrEmpty(CurrentModelPath);
 
-        // 뎁스 이미지가 사용 가능한지 확인
-        if (_occlusionManager.descriptor?.environmentDepthImageSupported == Supported.Unsupported)
+        if (_occlusionManager != null
+            && _occlusionManager.descriptor != null
+            && _occlusionManager.descriptor.environmentDepthImageSupported == Supported.Unsupported)
         {
             PopupView.AddPopup(new PopupContext("이 기기는 AR 뎁스 기능을 지원하지 않습니다. 일부 기능이 제대로 동작하지 않을 수 있습니다."));
         }
+
+        SetupDimensionUI();
+        SetDimensionVisible(false);
     }
 
     private void Update()
     {
         HandleTouchInput();
 
-        if (_activeModel != null && _showDimensions)
+        bool dimsActive = _showDimensions && _selectedFurniture != null;
+
+        if (dimsActive)
         {
-            UpdateDimensionPositions();
+            UpdateDimensionPositions(_selectedFurniture);
         }
-        
-        if (_uiContainer != null && _uiContainer.activeSelf != _showDimensions)
+
+        if (_uiContainer != null && _uiContainer.activeSelf != dimsActive)
         {
-            _uiContainer.SetActive(_showDimensions);
+            _uiContainer.SetActive(dimsActive);
         }
 
         if (_widthLine && _heightLine && _lengthLine)
         {
-            _widthLine.gameObject.SetActive(_showDimensions);
-            _heightLine.gameObject.SetActive(_showDimensions);
-            _lengthLine.gameObject.SetActive(_showDimensions);
+            _widthLine.gameObject.SetActive(dimsActive);
+            _heightLine.gameObject.SetActive(dimsActive);
+            _lengthLine.gameObject.SetActive(dimsActive);
         }
+    }
+
+    #endregion
+
+    #region Public API
+
+    /// <summary>
+    /// 가구 목록 등 외부에서 새 가구를 추가 배치할 때 호출.
+    /// 화면 중앙 평면에 자동 배치하고 즉시 선택 상태로 둔다.
+    /// </summary>
+    public async void PlaceFurnitureFromCatalogue(string modelPath, ModelDimension dimension)
+    {
+        if (_isModelLoading || string.IsNullOrEmpty(modelPath)) return;
+
+        Vector3 placePos;
+        if (TryGetCenterPlanePosition(out var centerPos))
+        {
+            placePos = centerPos;
+        }
+        else if (_arCamera != null)
+        {
+            placePos = _arCamera.transform.position + _arCamera.transform.forward * 1.0f;
+        }
+        else
+        {
+            placePos = transform.position;
+        }
+
+        var placed = await LoadModelAndPlace(modelPath, dimension, placePos, Quaternion.identity);
+        if (placed != null) SelectFurniture(placed);
     }
 
     #endregion
@@ -106,20 +166,22 @@ public class ARPlaceCore : MonoBehaviour
 
     private void HandleTouchInput()
     {
-        if (string.IsNullOrEmpty(CurrentModelPath) || _isModelLoading) return;
+        if (_isModelLoading) return;
 
         int touchCount = ETouch.activeFingers.Count;
         if (touchCount == 0) return;
+
+        if (IsAnyTouchOverUI()) return;
 
         if (touchCount == 1)
         {
             HandleSingleTouch();
         }
-        else if (touchCount == 2 && _activeModel != null)
+        else if (touchCount == 2 && _selectedFurniture != null)
         {
             HandleDoubleTouch();
         }
-        else if (touchCount == 3 && _activeModel != null)
+        else if (touchCount == 3 && _selectedFurniture != null)
         {
             HandleTripleTouch();
         }
@@ -128,41 +190,69 @@ public class ARPlaceCore : MonoBehaviour
     private void HandleSingleTouch()
     {
         Finger finger = ETouch.activeFingers[0];
-        if (finger.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began ||
-            finger.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved)
+        var phase = finger.currentTouch.phase;
+
+        if (phase == UnityEngine.InputSystem.TouchPhase.Began)
         {
-            if (_arRaycastManager.Raycast(finger.currentTouch.screenPosition, _hits, TrackableType.PlaneWithinPolygon))
+            _singleTouchActsOnSelected = false;
+
+            // 1) 가구 콜라이더 픽 시도
+            var picked = PickFurnitureAtScreen(finger.screenPosition);
+            if (picked != null)
             {
-                bool foundValidPlane = false;
-                Vector3 lowestPosition = Vector3.zero;
+                SelectFurniture(picked);
+                _singleTouchActsOnSelected = true;
+                return;
+            }
 
-                foreach (var hit in _hits)
+            // 2) 평면 picking
+            if (_arRaycastManager.Raycast(finger.screenPosition, _hits, TrackableType.PlaneWithinPolygon))
+            {
+                if (TryGetLowestHorizontalUp(out var lowestPos))
                 {
-                    ARPlane hitPlane = _arPlaneManager.GetPlane(hit.trackableId);
-                    if (hitPlane != null && hitPlane.alignment == PlaneAlignment.HorizontalUp)
+                    // 기본 진입(legacy) — 첫 1회 자동 배치
+                    if (_hasDefaultEntry && !_defaultModelPlaced)
                     {
-                        if (!foundValidPlane || hit.pose.position.y < lowestPosition.y)
+                        _defaultModelPlaced = true;
+                        var dim = CurrentModelDimension;
+                        // dimension이 유효하지 않으면 50x50x50으로 fallback
+                        if (!IsDimensionValid(dim))
                         {
-                            lowestPosition = hit.pose.position;
-                            foundValidPlane = true;
+                            dim = new ModelDimension(DefaultDimensionCm, DefaultDimensionCm, DefaultDimensionCm);
                         }
+                        _ = PlaceAndSelect(CurrentModelPath, dim, lowestPos);
+                        return;
                     }
-                }
 
-                if (foundValidPlane)
+                    // 그 외 — 빈 평면을 탭 = 선택 해제
+                    Deselect();
+                }
+            }
+            else
+            {
+                Deselect();
+            }
+        }
+        else if (phase == UnityEngine.InputSystem.TouchPhase.Moved)
+        {
+            if (!_singleTouchActsOnSelected || _selectedFurniture == null) return;
+
+            if (_arRaycastManager.Raycast(finger.screenPosition, _hits, TrackableType.PlaneWithinPolygon))
+            {
+                if (TryGetLowestHorizontalUp(out var lowestPos))
                 {
-                    if (finger.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began && _activeModel == null)
-                    {
-                        LoadModelAndPlace(lowestPosition, Quaternion.identity);
-                    }
-                    else if (finger.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved && _activeModel != null)
-                    {
-                        float finalY = lowestPosition.y + _yOffsetFromPlane;
-                        _activeModel.transform.position = new Vector3(lowestPosition.x, finalY, lowestPosition.z);
-                    }
+                    var t = _selectedFurniture.Root.transform;
+                    float finalY = lowestPos.y + _selectedFurniture.YOffsetFromPlane;
+                    t.position = new Vector3(lowestPos.x, finalY, lowestPos.z);
                 }
             }
         }
+    }
+
+    private async System.Threading.Tasks.Task PlaceAndSelect(string path, ModelDimension dim, Vector3 pos)
+    {
+        var placed = await LoadModelAndPlace(path, dim, pos, Quaternion.identity);
+        if (placed != null) SelectFurniture(placed);
     }
 
     private void HandleDoubleTouch()
@@ -173,55 +263,44 @@ public class ARPlaceCore : MonoBehaviour
         float currentDistance = Vector2.Distance(f1.screenPosition, f2.screenPosition);
         float currentMidpointX = (f1.screenPosition.x + f2.screenPosition.x) / 2f;
 
+        var sel = _selectedFurniture;
+
         if (f1.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began ||
             f2.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began)
         {
             _initialMidpointX = currentMidpointX;
             _initialDistance = currentDistance;
-            _initialRotation = _activeModel.transform.rotation;
-            _initialScale = _activeModel.transform.localScale;
-
-            // _gestureMode 관련 로직 삭제
+            _initialRotation = sel.Root.transform.rotation;
+            _initialScale = sel.Root.transform.localScale;
         }
         else if (f1.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
                  f2.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved)
         {
-            // --- 1. 독립적인 Y축 회전 로직 ---
             float deltaMidX = currentMidpointX - _initialMidpointX;
 
-            // 회전 데드존 체크: 중심점의 누적 이동거리가 데드존보다 클 때만 회전 적용
             if (Mathf.Abs(deltaMidX) > _rotationDeadzone)
             {
-                // 데드존만큼을 뺀 값으로 회전 계산 (갑작스런 튀는 현상 방지)
                 float effectiveDeltaX = deltaMidX - (Mathf.Sign(deltaMidX) * _rotationDeadzone);
-                _activeModel.transform.rotation = _initialRotation * Quaternion.Euler(0, -effectiveDeltaX * _rotationSensitivity, 0);
+                sel.Root.transform.rotation = _initialRotation * Quaternion.Euler(0, -effectiveDeltaX * _rotationSensitivity, 0);
             }
 
-            // --- 2. 독립적인 스케일링 로직 ---
-            if (_allowModelScaling)
+            if (sel.AllowScaling)
             {
                 float deltaDist = currentDistance - _initialDistance;
-
-                if (Mathf.Abs(deltaDist) > _pinchDeadzone)
+                if (Mathf.Abs(deltaDist) > _pinchDeadzone && _initialDistance > 0)
                 {
                     float effectiveDeltaDist = deltaDist - (Mathf.Sign(deltaDist) * _pinchDeadzone);
+                    float scaleFactor = (_initialDistance + effectiveDeltaDist) / _initialDistance;
+                    Vector3 newScale = _initialScale * scaleFactor;
 
-                    if (_initialDistance > 0)
-                    {
-                        float scaleFactor = (_initialDistance + effectiveDeltaDist) / _initialDistance;
-                        Vector3 newScale = _initialScale * scaleFactor;
+                    float minS = 0.1f;
+                    float maxS = 5.0f;
 
-                        // 최소/최대 제한값
-                        float minS = 0.1f;
-                        float maxS = 5.0f;
-
-                        // Vector3는 직접 Clamp가 안 되므로 Mathf.Clamp로 각각 조절!
-                        _activeModel.transform.localScale = new Vector3(
-                            Mathf.Clamp(newScale.x, minS, maxS),
-                            Mathf.Clamp(newScale.y, minS, maxS),
-                            Mathf.Clamp(newScale.z, minS, maxS)
-                        );
-                    }
+                    sel.Root.transform.localScale = new Vector3(
+                        Mathf.Clamp(newScale.x, minS, maxS),
+                        Mathf.Clamp(newScale.y, minS, maxS),
+                        Mathf.Clamp(newScale.z, minS, maxS)
+                    );
                 }
             }
         }
@@ -235,12 +314,14 @@ public class ARPlaceCore : MonoBehaviour
 
         float currentMidpointY = (f1.screenPosition.y + f2.screenPosition.y + f3.screenPosition.y) / 3f;
 
+        var sel = _selectedFurniture;
+
         if (f1.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began ||
             f2.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began ||
             f3.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Began)
         {
             _initialMidpointY = currentMidpointY;
-            _initialHeight = _activeModel.transform.position.y;
+            _initialHeight = sel.Root.transform.position.y;
         }
         else if (f1.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
                  f2.currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
@@ -248,51 +329,199 @@ public class ARPlaceCore : MonoBehaviour
         {
             float deltaY = currentMidpointY - _initialMidpointY;
             float newY = _initialHeight + (deltaY * _heightSensitivity);
-            _activeModel.transform.position = new Vector3(_activeModel.transform.position.x, newY, _activeModel.transform.position.z);
+            sel.Root.transform.position = new Vector3(sel.Root.transform.position.x, newY, sel.Root.transform.position.z);
 
-            if (_arRaycastManager.Raycast(new Vector2(Screen.width / 2, Screen.height / 2), _hits, TrackableType.PlaneWithinPolygon))
+            if (_arRaycastManager.Raycast(new Vector2(Screen.width / 2f, Screen.height / 2f), _hits, TrackableType.PlaneWithinPolygon)
+                && _hits.Count > 0)
             {
-                _yOffsetFromPlane = _activeModel.transform.position.y - _hits[0].pose.position.y;
+                sel.YOffsetFromPlane = sel.Root.transform.position.y - _hits[0].pose.position.y;
             }
         }
+    }
+
+    private bool IsAnyTouchOverUI()
+    {
+        if (EventSystem.current == null) return false;
+        foreach (var f in ETouch.activeFingers)
+        {
+            if (EventSystem.current.IsPointerOverGameObject(f.index)) return true;
+        }
+        return false;
+    }
+
+    private bool TryGetLowestHorizontalUp(out Vector3 pos)
+    {
+        bool found = false;
+        Vector3 lowest = Vector3.zero;
+        foreach (var hit in _hits)
+        {
+            var plane = _arPlaneManager.GetPlane(hit.trackableId);
+            if (plane != null && plane.alignment == PlaneAlignment.HorizontalUp)
+            {
+                if (!found || hit.pose.position.y < lowest.y)
+                {
+                    lowest = hit.pose.position;
+                    found = true;
+                }
+            }
+        }
+        pos = lowest;
+        return found;
+    }
+
+    private bool TryGetCenterPlanePosition(out Vector3 pos)
+    {
+        if (_arRaycastManager.Raycast(new Vector2(Screen.width / 2f, Screen.height / 2f), _hits, TrackableType.PlaneWithinPolygon)
+            && TryGetLowestHorizontalUp(out var p))
+        {
+            pos = p;
+            return true;
+        }
+        pos = Vector3.zero;
+        return false;
+    }
+
+    private PlacedFurniture PickFurnitureAtScreen(Vector2 screenPos)
+    {
+        var cam = _arCamera != null ? _arCamera : Camera.main;
+        if (cam == null) return null;
+
+        Ray ray = cam.ScreenPointToRay(screenPos);
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f, _furnitureLayer))
+        {
+            // hit.collider가 placed 중 하나의 BoxCollider인지 확인
+            for (int i = 0; i < _placedFurnitures.Count; i++)
+            {
+                if (_placedFurnitures[i].Collider == hit.collider)
+                    return _placedFurnitures[i];
+            }
+        }
+        return null;
+    }
+
+    #endregion
+
+    #region Selection / Outline
+
+    private void SelectFurniture(PlacedFurniture furniture)
+    {
+        if (_selectedFurniture == furniture) return;
+
+        if (_selectedFurniture != null) RemoveOutline(_selectedFurniture);
+        _selectedFurniture = furniture;
+        if (_selectedFurniture != null) ApplyOutline(_selectedFurniture);
+    }
+
+    private void Deselect()
+    {
+        if (_selectedFurniture == null) return;
+        RemoveOutline(_selectedFurniture);
+        _selectedFurniture = null;
+    }
+
+    private void ApplyOutline(PlacedFurniture f)
+    {
+        if (_outlineMaterial == null || f.OutlineApplied || f.Renderers == null) return;
+
+        for (int i = 0; i < f.Renderers.Length; i++)
+        {
+            var r = f.Renderers[i];
+            if (r == null) continue;
+            var original = f.OriginalMaterials[i];
+            var extended = new Material[original.Length + 1];
+            Array.Copy(original, extended, original.Length);
+            extended[original.Length] = _outlineMaterial;
+            r.materials = extended;
+        }
+        f.OutlineApplied = true;
+    }
+
+    private void RemoveOutline(PlacedFurniture f)
+    {
+        if (!f.OutlineApplied || f.Renderers == null) return;
+
+        for (int i = 0; i < f.Renderers.Length; i++)
+        {
+            var r = f.Renderers[i];
+            if (r == null) continue;
+            r.materials = f.OriginalMaterials[i];
+        }
+        f.OutlineApplied = false;
     }
 
     #endregion
 
     #region Model Loading & Scaling
 
-    private async void LoadModelAndPlace(Vector3 position, Quaternion rotation)
+    private async System.Threading.Tasks.Task<PlacedFurniture> LoadModelAndPlace(string modelPath, ModelDimension dimension, Vector3 position, Quaternion rotation)
     {
         _isModelLoading = true;
-        GameObject parentObj = new GameObject("AR_Model_Instance");
+
+        GameObject parentObj = new GameObject("AR_Furniture_Instance");
         parentObj.transform.position = position;
         parentObj.transform.rotation = rotation;
         parentObj.transform.SetParent(this.transform);
 
         var gltf = new GltfImport();
-        bool success = await gltf.Load(CurrentModelPath);
+        bool success = await gltf.Load(modelPath);
 
+        PlacedFurniture placed = null;
         if (success)
         {
             bool instantSuccess = await gltf.InstantiateMainSceneAsync(parentObj.transform);
             if (instantSuccess)
             {
-                ApplyRealScale(parentObj);
+                bool allowScaling = !IsDimensionValid(dimension);
+                if (!IsDimensionValid(dimension))
+                {
+                    dimension = new ModelDimension(DefaultDimensionCm, DefaultDimensionCm, DefaultDimensionCm);
+                }
+
+                var box = ApplyRealScale(parentObj, dimension);
                 ApplyDefaultPBRSettings(parentObj);
-                _activeModel = parentObj;
-                SetupDimensionUI();
+
+                var renderers = parentObj.GetComponentsInChildren<Renderer>();
+                var originalMats = new Material[renderers.Length][];
+                for (int i = 0; i < renderers.Length; i++)
+                {
+                    originalMats[i] = renderers[i].sharedMaterials;
+                }
+
+                placed = new PlacedFurniture
+                {
+                    Root = parentObj,
+                    Collider = box,
+                    Dimension = dimension,
+                    AllowScaling = allowScaling,
+                    YOffsetFromPlane = 0f,
+                    Renderers = renderers,
+                    OriginalMaterials = originalMats,
+                };
+
+                _placedFurnitures.Add(placed);
+                if (_placedFurnitures.Count == 1)
+                {
+                    OnFirstFurniturePlaced?.Invoke();
+                }
             }
-            else { Destroy(parentObj); }
+            else
+            {
+                Destroy(parentObj);
+            }
         }
-        else { Destroy(parentObj); }
+        else
+        {
+            Destroy(parentObj);
+        }
 
         _isModelLoading = false;
+        return placed;
     }
 
-    private void ApplyRealScale(GameObject root)
+    private BoxCollider ApplyRealScale(GameObject root, ModelDimension dimension)
     {
         Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
-        if (renderers.Length == 0) return;
+        if (renderers.Length == 0) return null;
 
         Bounds combinedBounds = renderers[0].bounds;
         foreach (var r in renderers) combinedBounds.Encapsulate(r.bounds);
@@ -302,7 +531,7 @@ public class ARPlaceCore : MonoBehaviour
 
         foreach (Transform child in root.transform) child.position += offset;
 
-        float targetMaxMeter = Mathf.Max(CurrentModelDimension.width, CurrentModelDimension.height, CurrentModelDimension.length) * 0.01f;
+        float targetMaxMeter = Mathf.Max(dimension.width, dimension.height, dimension.length) * 0.01f;
         float currentMax = Mathf.Max(combinedBounds.size.x, combinedBounds.size.y, combinedBounds.size.z);
         float scaleFactor = (currentMax > 0) ? (targetMaxMeter / currentMax) : 1.0f;
 
@@ -311,6 +540,24 @@ public class ARPlaceCore : MonoBehaviour
         BoxCollider box = root.AddComponent<BoxCollider>();
         box.center = new Vector3(0, combinedBounds.size.y / 2f, 0);
         box.size = combinedBounds.size;
+        return box;
+    }
+
+    private void ApplyDefaultPBRSettings(GameObject root)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer renderer in renderers)
+        {
+            foreach (Material mat in renderer.materials)
+            {
+                if (mat.HasProperty("metallicFactor"))
+                    mat.SetFloat("metallicFactor", 0.0f);
+
+                if (mat.HasProperty("roughnessFactor"))
+                    mat.SetFloat("roughnessFactor", 0.5f);
+            }
+        }
     }
 
     #endregion
@@ -319,13 +566,12 @@ public class ARPlaceCore : MonoBehaviour
 
     private void SetupDimensionUI()
     {
-        if (_activeModel == null) return;
-        if (_uiContainer != null) Destroy(_uiContainer);
+        if (_dimensionTextPrefab == null) return;
+        if (_uiContainer != null) return;
 
         _uiContainer = new GameObject("Dimension_UI_Container");
-        _uiContainer.transform.SetParent(_activeModel.transform);
+        _uiContainer.transform.SetParent(this.transform);
 
-        // 🚨 핵심: UI 렌더링을 위한 Canvas 세팅 추가!
         Canvas canvas = _uiContainer.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
 
@@ -341,27 +587,29 @@ public class ARPlaceCore : MonoBehaviour
         return go.GetComponent<TMP_Text>();
     }
 
-    private void UpdateDimensionPositions()
+    private void SetDimensionVisible(bool visible)
     {
-        BoxCollider box = _activeModel.GetComponent<BoxCollider>();
-        if (box == null || _widthText == null) return;
+        if (_uiContainer != null) _uiContainer.SetActive(visible);
+        if (_widthLine) _widthLine.gameObject.SetActive(visible);
+        if (_heightLine) _heightLine.gameObject.SetActive(visible);
+        if (_lengthLine) _lengthLine.gameObject.SetActive(visible);
+    }
 
-        // 가구의 실제 월드 스케일이 적용된 사이즈
-        Vector3 size = Vector3.Scale(box.size, _activeModel.transform.localScale);
-        Vector3 center = _activeModel.transform.position; // 가구의 바닥 중심
-        Transform modelTransform = _activeModel.transform;
+    private void UpdateDimensionPositions(PlacedFurniture f)
+    {
+        if (f.Collider == null || _widthText == null) return;
 
-        // 텍스트를 선에서 띄울 간격 & 선을 모델에서 살짝 띄울 간격
+        Vector3 size = Vector3.Scale(f.Collider.size, f.Root.transform.localScale);
+        Vector3 center = f.Root.transform.position;
+        Transform modelTransform = f.Root.transform;
+
         float textMargin = 0.1f;
         float lineOffset = 0.02f;
 
-        // 기준이 되는 절반 크기 벡터
         Vector3 halfRight = modelTransform.right * (size.x / 2f);
         Vector3 halfForward = modelTransform.forward * (size.z / 2f);
         Vector3 upFull = modelTransform.up * size.y;
 
-        // --- 1. 가로 (Width): 정면 바닥 ---
-        // 왼쪽 밑에서 오른쪽 밑으로 선 긋기
         Vector3 widthStart = center - halfRight + halfForward + (modelTransform.forward * lineOffset);
         Vector3 widthEnd = center + halfRight + halfForward + (modelTransform.forward * lineOffset);
 
@@ -371,12 +619,9 @@ public class ARPlaceCore : MonoBehaviour
             _widthLine.SetPosition(1, widthEnd);
         }
 
-        // 텍스트는 선의 중앙에 배치
         _widthText.text = $"{(size.x * 100f):F0} cm";
         _widthText.transform.position = Vector3.Lerp(widthStart, widthEnd, 0.5f) + (modelTransform.forward * textMargin);
 
-        // --- 2. 세로 (Depth): 우측 바닥 ---
-        // 앞쪽 밑에서 뒤쪽 밑으로 선 긋기
         Vector3 depthStart = center + halfRight + halfForward + (modelTransform.right * lineOffset);
         Vector3 depthEnd = center + halfRight - halfForward + (modelTransform.right * lineOffset);
 
@@ -389,8 +634,6 @@ public class ARPlaceCore : MonoBehaviour
         _lengthText.text = $"{(size.z * 100f):F0} cm";
         _lengthText.transform.position = Vector3.Lerp(depthStart, depthEnd, 0.5f) + (modelTransform.right * textMargin);
 
-        // --- 3. 높이 (Height): 좌측 앞 모서리 ---
-        // 왼쪽 앞 바닥에서 위로 선 긋기
         Vector3 heightStart = center - halfRight + halfForward - (modelTransform.right * lineOffset);
         Vector3 heightEnd = heightStart + upFull;
 
@@ -403,37 +646,21 @@ public class ARPlaceCore : MonoBehaviour
         _heightText.text = $"{(size.y * 100f):F0} cm";
         _heightText.transform.position = Vector3.Lerp(heightStart, heightEnd, 0.5f) - (modelTransform.right * textMargin);
 
-        // --- 빌보드 & 회전 고정 ---
-        Quaternion camRot = Camera.main.transform.rotation;
-        _widthText.transform.rotation = camRot;
-        _heightText.transform.rotation = camRot;
-        _lengthText.transform.rotation = camRot;
+        var cam = _arCamera != null ? _arCamera : Camera.main;
+        if (cam != null)
+        {
+            Quaternion camRot = cam.transform.rotation;
+            _widthText.transform.rotation = camRot;
+            _heightText.transform.rotation = camRot;
+            _lengthText.transform.rotation = camRot;
+        }
     }
 
     #endregion
 
-    private bool IsModelDimensionValid()
+    private static bool IsDimensionValid(ModelDimension d)
     {
-        if (CurrentModelDimension == null) return false;
-        return Mathf.Max(CurrentModelDimension.width, CurrentModelDimension.height, CurrentModelDimension.length) > DimensionValidThreshold;
-    }
-
-    private void ApplyDefaultPBRSettings(GameObject root)
-    {
-        Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
-
-        foreach (Renderer renderer in renderers)
-        {
-            foreach (Material mat in renderer.materials)
-            {
-                // Metallic 설정 (0 ~ 1)
-                if (mat.HasProperty("metallicFactor"))
-                    mat.SetFloat("metallicFactor", 0.0f);
-
-                // Roughness 설정 (0 ~ 1)
-                if (mat.HasProperty("roughnessFactor"))
-                    mat.SetFloat("roughnessFactor", 0.5f);
-            }
-        }
+        if (d == null) return false;
+        return Mathf.Max(d.width, d.height, d.length) > DimensionValidThreshold;
     }
 }

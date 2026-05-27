@@ -1,8 +1,9 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections;
 
-public class ARPlacePresenter
+public class ARPlacePresenter : IDisposable
 {
     private ARPlaceView _view;
     private ARPlaceCore _core;
@@ -13,6 +14,27 @@ public class ARPlacePresenter
         _view = view;
         _core = core;
         _view.SetCancleButtonAction(OnCancleButtonClicked);
+
+        // 하이브리드 진입: CurrentModelPath가 있으면 첫 배치 전까지 목록 버튼 숨김
+        bool hasDefaultEntry = !string.IsNullOrEmpty(ARPlaceCore.CurrentModelPath);
+        _view.SetShowFurnitureListButtonActive(!hasDefaultEntry);
+
+        if (_core != null) _core.OnFirstFurniturePlaced += HandleFirstFurniturePlaced;
+    }
+
+    public void Dispose()
+    {
+        if (_core != null) _core.OnFirstFurniturePlaced -= HandleFirstFurniturePlaced;
+    }
+
+    private void HandleFirstFurniturePlaced()
+    {
+        _view.SetShowFurnitureListButtonActive(true);
+    }
+
+    public void OnShowFurnitureListClicked()
+    {
+        _view.ToggleFurnitureList();
     }
 
     public void UpdateView()
