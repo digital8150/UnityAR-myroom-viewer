@@ -167,6 +167,8 @@ public class GalleryPresenter : IDisposable
             _view.ShowInspectPage();
             _currentPage = GalleryPage.Inspect;
 
+            Debug.Log($"[GalleryPresenter] Model Info: {modelData.name}, {modelData.id}");
+
             PopupView.Instance.SetLoadingPannelActive(false);
         }
         catch (Exception ex)

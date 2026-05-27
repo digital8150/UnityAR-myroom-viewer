@@ -1881,6 +1881,7 @@ MonoBehaviour:
   _nameInputCancelButton: {fileID: 441178882}
   _backButton: {fileID: 1299487453}
   _selectionIndicatorMaterial: {fileID: 2100000, guid: 8690b5bd08628fe4fb72ce558de87826, type: 2}
+  _isFake: 1
 --- !u!1 &374644564
 GameObject:
   m_ObjectHideFlags: 0

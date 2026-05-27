@@ -49,6 +49,16 @@ public class RoomPlanPresenter
     private string _currentRoomXml = null;
     private string _currentRoomName = null;
     private bool _isDefaultRoom = false;
+    private bool _isCurrentRoomFake = false;
+
+    // 페이크룸 세션 상태 (isFake = true일 때만 사용)
+    // 앱 실행 세션 내 유지가 필요해 static — 씬 재진입에도 살아남고 앱 재시작 시 자연히 초기화된다.
+    private const long FAKE_ROOM_ID = 1;
+    private const int FAKE_GENERATION_DELAY_MS = 5000;
+    private static bool _isFakeUsedThisSession = false;
+    private static Room3DDto _sessionFakeRoom = null;
+    private static string _sessionFakeRoomXml = null;
+    private static List<PlacedFurniture> _sessionFakeFurniture = new List<PlacedFurniture>();
 
     public RoomPlanPresenter(RoomPlanView view, TouchView touchView, Material defaultWallMaterial)
     {
@@ -138,6 +148,7 @@ public class RoomPlanPresenter
         _currentRoomXml = null;
         _currentRoomName = null;
         _isDefaultRoom = false;
+        _isCurrentRoomFake = false;
         LoadProjectList();
     }
 
@@ -327,37 +338,48 @@ public class RoomPlanPresenter
         _view.ClearProjectCards();
         _view.SetActiveProjectListEmpty(false);
 
+        // 세션에 보관 중인 페이크룸을 먼저 노출
+        if (_sessionFakeRoom != null)
+            AddProjectCard(_sessionFakeRoom, isFake: true);
+
         var (code, json) = await RoomPlanService.GetMyRoom3DList();
 
         if (code != 200 || string.IsNullOrEmpty(json))
         {
             Debug.LogWarning($"프로젝트 목록 조회 실패 ({code})");
-            _view.SetActiveProjectListEmpty(true);
+            if (_sessionFakeRoom == null) _view.SetActiveProjectListEmpty(true);
             return;
         }
 
         var page = JsonConvert.DeserializeObject<PageDto<Room3DDto>>(json);
-        if (page?.content == null || page.content.Count == 0)
+        int realCount = page?.content?.Count ?? 0;
+        if (realCount == 0 && _sessionFakeRoom == null)
         {
             _view.SetActiveProjectListEmpty(true);
             return;
         }
 
-        foreach (var room in page.content)
+        if (realCount > 0)
         {
-            var card = _view.CreateProjectCard();
-            if (card == null) continue;
-
-            card.SetCardText(room.roomName);
-            var captured = room;
-            card.SetButtonAction(() => OnProjectCardClicked(captured));
-            card.SetLongPressAction(() => OnProjectCardLongPressed(captured));
-
-            if (!string.IsNullOrEmpty(room.drawingImageUrl))
-                LoadCardImage(card, room.drawingImageUrl);
-            else
-                card.SetCardImage(_view.DefaultProjectCardThumbnail);
+            foreach (var room in page.content)
+                AddProjectCard(room, isFake: false);
         }
+    }
+
+    private void AddProjectCard(Room3DDto room, bool isFake)
+    {
+        var card = _view.CreateProjectCard();
+        if (card == null) return;
+
+        card.SetCardText(room.roomName);
+        var captured = room;
+        card.SetButtonAction(() => OnProjectCardClicked(captured, isFake));
+        card.SetLongPressAction(() => OnProjectCardLongPressed(captured, isFake));
+
+        if (!string.IsNullOrEmpty(room.drawingImageUrl))
+            LoadCardImage(card, room.drawingImageUrl);
+        else
+            card.SetCardImage(_view.DefaultProjectCardThumbnail);
     }
 
     private async void LoadCardImage(ProjectCardView card, string imageUrl)
@@ -376,18 +398,29 @@ public class RoomPlanPresenter
         card.SetCardImage(sprite);
     }
 
-    private void OnProjectCardLongPressed(Room3DDto room)
+    private void OnProjectCardLongPressed(Room3DDto room, bool isFake)
     {
         string name = !string.IsNullOrEmpty(room.roomName) ? room.roomName : "이 방";
         PopupView.Instance.Presenter.ShowYesNo(
             $"'{name}' 방을 삭제하시겠습니까?",
-            () => DeleteRoom(room),
+            () => DeleteRoom(room, isFake),
             null
         );
     }
 
-    private async void DeleteRoom(Room3DDto room)
+    private async void DeleteRoom(Room3DDto room, bool isFake)
     {
+        if (isFake)
+        {
+            // 서버에 삭제 엔드포인트가 없으므로 세션 메모리에서만 제거
+            _sessionFakeRoom = null;
+            _sessionFakeRoomXml = null;
+            _sessionFakeFurniture.Clear();
+            _isFakeUsedThisSession = false;
+            LoadProjectList();
+            return;
+        }
+
         PopupView.Instance.SetLoadingPannelActive(true);
         var (code, body) = await RoomPlanService.DeleteRoom3D(room.id);
         PopupView.Instance.SetLoadingPannelActive(false);
@@ -401,8 +434,14 @@ public class RoomPlanPresenter
         LoadProjectList();
     }
 
-    private async void OnProjectCardClicked(Room3DDto room)
+    private async void OnProjectCardClicked(Room3DDto room, bool isFake)
     {
+        if (isFake)
+        {
+            await OpenFakeRoomFromSession();
+            return;
+        }
+
         if (string.IsNullOrEmpty(room.drawingXmlUrl))
         {
             PopupView.Instance.ShowMessage("저장된 도면 XML이 없습니다.");
@@ -423,6 +462,7 @@ public class RoomPlanPresenter
         _currentRoomName = room.roomName;
         _currentRoomXml = xmlContent;
         _isDefaultRoom = IsDefaultRoomXml(xmlContent);
+        _isCurrentRoomFake = false;
 
         if (_isDefaultRoom)
         {
@@ -434,6 +474,27 @@ public class RoomPlanPresenter
             ShowEditPage(false);
         }
         await RestoreFurnitureFromXml(xmlContent);
+        PopupView.Instance.SetLoadingPannelActive(false);
+    }
+
+    private async Task OpenFakeRoomFromSession()
+    {
+        if (_sessionFakeRoom == null || string.IsNullOrEmpty(_sessionFakeRoomXml))
+        {
+            PopupView.Instance.ShowMessage("페이크룸 세션 정보가 유실되었습니다.");
+            return;
+        }
+
+        PopupView.Instance.SetLoadingPannelActive(true);
+        _currentRoom3dId = _sessionFakeRoom.id;
+        _currentRoomName = _sessionFakeRoom.roomName;
+        _currentRoomXml = _sessionFakeRoomXml;
+        _isDefaultRoom = false;
+        _isCurrentRoomFake = true;
+
+        ConstructRoom(_sessionFakeRoomXml);
+        ShowEditPage(false);
+        await InstantiateFurnitureFromList(_sessionFakeFurniture);
         PopupView.Instance.SetLoadingPannelActive(false);
     }
     #endregion
@@ -459,7 +520,7 @@ public class RoomPlanPresenter
 
         try
         {
-            var (code, json) = await GalleryService.GetSharedSearch(_modelPageIndex, MODELS_PER_PAGE, category: _selectedCategory);
+            var (code, json) = await GalleryService.GetSharedSearch(_modelPageIndex, MODELS_PER_PAGE, category: _selectedCategory, sort: "createdAt,desc");
             if (code != 200 || string.IsNullOrEmpty(json))
             {
                 Debug.LogWarning($"[RoomPlanPresenter] 모델 목록 조회 실패 ({code})");
@@ -511,6 +572,8 @@ public class RoomPlanPresenter
 
     private async void OnModelButtonClicked(RoomPlanModelButtonView btn, ModelData model)
     {
+        Debug.Log($"[RoomPlan] OnModelButtonClicked - ModelID: {model.id}, Name: {model.name}, Link: {model.link}");
+
         if (_selectedModelButton != null) _selectedModelButton.SetSelected(false);
         _selectedModelButton = btn;
         btn.SetSelected(true);
@@ -832,6 +895,12 @@ public class RoomPlanPresenter
             return;
         }
 
+        if (_isCurrentRoomFake)
+        {
+            await SaveFakeRoom(newRoomName);
+            return;
+        }
+
         string newXml;
         try
         {
@@ -926,9 +995,21 @@ public class RoomPlanPresenter
         }
         if (nodes == null || nodes.Count == 0) return;
 
+        var parsed = new List<PlacedFurniture>(nodes.Count);
         foreach (XmlNode node in nodes)
         {
             var data = ParseFurnitureNode(node);
+            if (data != null) parsed.Add(data);
+        }
+        await InstantiateFurnitureFromList(parsed);
+    }
+
+    private async Task InstantiateFurnitureFromList(List<PlacedFurniture> dataList)
+    {
+        if (dataList == null || dataList.Count == 0) return;
+
+        foreach (var data in dataList)
+        {
             if (data == null || string.IsNullOrEmpty(data.link)) continue;
 
             var (code, localPath) = await ProjectInspectService.GetModel3DFile(data.link);
@@ -944,7 +1025,6 @@ public class RoomPlanPresenter
             var dim = new ModelDimension(data.dimWidth, data.dimLength, data.dimHeight);
             ApplyScale(go, dim);
             go.transform.localScale *= data.userScale;
-            // Place at floor level then lift so bottom sits on Y=0 regardless of scale
             go.transform.position = new Vector3(data.posX, 0f, data.posZ);
             LiftToFloor(go, new Vector3(data.posX, 0f, data.posZ));
             var wb = AddSelectionCollider(go);
@@ -955,7 +1035,45 @@ public class RoomPlanPresenter
             tag.SetupIndicator(wb, _view.SelectionIndicatorMaterial);
             _placedFurniture.Add(tag);
         }
-        Debug.Log($"[RoomPlanPresenter] 가구 복원 완료. 수: {_placedFurniture.Count}");
+        Debug.Log($"[RoomPlanPresenter] 가구 인스턴스화 완료. 수: {_placedFurniture.Count}");
+    }
+
+    private Task SaveFakeRoom(string newRoomName)
+    {
+        // 데모 플로우는 클라이언트 자체 처리: 가구/이름 모두 세션 메모리에만 반영
+        _sessionFakeFurniture = CapturePlacedFurnitureData(_placedFurniture);
+
+        if (!string.IsNullOrWhiteSpace(newRoomName) && newRoomName != _currentRoomName)
+        {
+            _currentRoomName = newRoomName;
+            if (_sessionFakeRoom != null) _sessionFakeRoom.roomName = newRoomName;
+        }
+        return Task.CompletedTask;
+    }
+
+    private static List<PlacedFurniture> CapturePlacedFurnitureData(List<PlacedFurnitureTag> tags)
+    {
+        var list = new List<PlacedFurniture>(tags.Count);
+        foreach (var t in tags)
+        {
+            if (t == null || t.Data == null) continue;
+            var pos = t.transform.position;
+            var rot = t.transform.eulerAngles;
+            list.Add(new PlacedFurniture
+            {
+                modelId = t.Data.modelId,
+                link = t.Data.link,
+                dimWidth = t.Data.dimWidth,
+                dimLength = t.Data.dimLength,
+                dimHeight = t.Data.dimHeight,
+                posX = pos.x,
+                posY = pos.y,
+                posZ = pos.z,
+                rotY = rot.y,
+                userScale = t.Data.userScale,
+            });
+        }
+        return list;
     }
 
     private static PlacedFurniture ParseFurnitureNode(XmlNode node)
@@ -1114,6 +1232,13 @@ public class RoomPlanPresenter
 
     private async void OnUserConfirmedGeneration()
     {
+        // 페이크룸 분기: isFake가 켜져 있고 세션 내에서 아직 페이크 생성을 사용하지 않았다면 페이크 경로 사용
+        if (_view.IsFake && !_isFakeUsedThisSession)
+        {
+            await StartFakeRoomGeneration();
+            return;
+        }
+
         PopupView.Instance.SetLoadingPannelActive(true);
 
         string roomName = Path.GetFileNameWithoutExtension(_imagePath);
@@ -1150,6 +1275,85 @@ public class RoomPlanPresenter
         }
     }
 
+    private async Task StartFakeRoomGeneration()
+    {
+        PopupView.Instance.SetLoadingPannelActive(true);
+
+        string roomName = Path.GetFileNameWithoutExtension(_imagePath);
+
+        // 데모 플로우는 클라이언트가 자체 처리: 5초 대기 후 단건 조회로 미리 준비된 fake-room을 가져옴
+        await Task.Delay(FAKE_GENERATION_DELAY_MS);
+
+        var (code, json) = await RoomPlanService.GetFakeRoom(FAKE_ROOM_ID);
+        Debug.Log($"[FakeRoom] GET /api/fake-rooms/{FAKE_ROOM_ID} → code={code}, body={json}");
+
+        if (code < 200 || code >= 300 || string.IsNullOrEmpty(json))
+        {
+            Debug.LogError($"페이크룸 조회 실패 ({code}): {json}");
+            PopupView.Instance.ShowMessage($"페이크룸 조회 실패 ({code})");
+            PopupView.Instance.SetLoadingPannelActive(false);
+            return;
+        }
+
+        // 페이크 API는 xmlFileUrl, 실서버 Room3DDto는 drawingXmlUrl을 쓰므로 직접 파싱한다.
+        string imageUrl;
+        string xmlUrl;
+        try
+        {
+            var obj = JObject.Parse(json);
+            imageUrl = (string)(obj["drawingImageUrl"] ?? obj["imageUrl"]);
+            xmlUrl = (string)(obj["xmlFileUrl"] ?? obj["drawingXmlUrl"]);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[FakeRoom] JSON 파싱 실패: {e.Message}\nbody={json}");
+            PopupView.Instance.ShowMessage("페이크룸 응답 파싱 실패");
+            PopupView.Instance.SetLoadingPannelActive(false);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(xmlUrl))
+        {
+            Debug.LogError($"[FakeRoom] xmlFileUrl 누락. body={json}");
+            PopupView.Instance.ShowMessage("페이크룸 응답에 XML URL이 없습니다.");
+            PopupView.Instance.SetLoadingPannelActive(false);
+            return;
+        }
+
+        Debug.Log($"[FakeRoom] xml fetch from {xmlUrl}");
+        string xmlContent = await FetchText(xmlUrl);
+        if (string.IsNullOrEmpty(xmlContent))
+        {
+            Debug.LogError($"[FakeRoom] XML 패치 실패. url={xmlUrl}");
+            PopupView.Instance.ShowMessage("페이크룸 도면을 불러오지 못했습니다.");
+            PopupView.Instance.SetLoadingPannelActive(false);
+            return;
+        }
+        Debug.Log($"[FakeRoom] XML 패치 성공. length={xmlContent.Length}");
+
+        // 세션 컨텍스트 구성 (이름은 이미지 파일명으로 덮어쓴다)
+        _sessionFakeRoom = new Room3DDto
+        {
+            id = FAKE_ROOM_ID,
+            roomName = roomName,
+            drawingImageUrl = imageUrl,
+            drawingXmlUrl = xmlUrl,
+        };
+        _sessionFakeRoomXml = xmlContent;
+        _sessionFakeFurniture = new List<PlacedFurniture>();
+        _isFakeUsedThisSession = true;
+
+        _currentRoom3dId = FAKE_ROOM_ID;
+        _currentRoomName = roomName;
+        _currentRoomXml = xmlContent;
+        _isDefaultRoom = false;
+        _isCurrentRoomFake = true;
+
+        ConstructRoom(xmlContent);
+        ShowEditPage(false);
+        PopupView.Instance.SetLoadingPannelActive(false);
+    }
+
     private async void OnRoom3DSuccess(string json)
     {
         var notification = JsonConvert.DeserializeObject<Room3DNotificationDto>(json);
@@ -1179,6 +1383,7 @@ public class RoomPlanPresenter
         _currentRoomName = null;
         _currentRoomXml = xmlContent;
         _isDefaultRoom = false;
+        _isCurrentRoomFake = false;
 
         ConstructRoom(xmlContent);
         ShowEditPage(false);

@@ -7,13 +7,21 @@ using UnityEngine.Networking;
 
 public class ProjectInspectService : BaseService
 {
+    private static string BuildCacheFileName(string url)
+    {
+        string key = url;
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri)) key = uri.AbsolutePath;
+        key = key.TrimStart('/').Replace('/', '_').Replace('\\', '_');
+        foreach (char c in Path.GetInvalidFileNameChars()) key = key.Replace(c, '_');
+        return key;
+    }
+
     public static async Task<(long responseCode, string localPath)> GetModel3DFile(string s3Url)
     {
         try
         {
-            string fileName = Path.GetFileName(s3Url);
             string directoryPath = Path.Combine(Application.persistentDataPath, "Models");
-            string localPath = Path.Combine(directoryPath, fileName);
+            string localPath = Path.Combine(directoryPath, BuildCacheFileName(s3Url));
 
             if (!Directory.Exists(directoryPath)) Directory.CreateDirectory(directoryPath);
 

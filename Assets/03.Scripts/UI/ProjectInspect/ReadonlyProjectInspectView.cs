@@ -86,7 +86,6 @@ public class ReadonlyProjectInspectView : MonoBehaviour
         if (_categoryBadgeText) _categoryBadgeText.text = TranslateCategory(modelData.furniture_type);
 
         _presenter.Initialize(modelData.id);
-        SpawnModel3D(modelData.link);
     }
 
     public void SetBookmarkText(bool isBookmarked)

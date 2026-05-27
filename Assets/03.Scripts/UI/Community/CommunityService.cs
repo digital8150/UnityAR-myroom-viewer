@@ -8,6 +8,20 @@ using UnityEngine.Networking;
 public class CommunityService : BaseService
 {
     /// <summary>
+    /// 프로젝트 카드에서 커뮤니티 글쓰기로 이동할 때 모델 ID를 저장합니다.
+    /// </summary>
+    public static int PendingModel3dId { get; set; } = -1;
+
+    /// <summary>
+    /// 대기 중인 모델 ID를 소비하고 반환합니다.
+    /// </summary>
+    public static int ConsumePendingModel3dId()
+    {
+        int id = PendingModel3dId;
+        PendingModel3dId = -1;
+        return id;
+    }
+    /// <summary>
     /// Fetches a single post by its ID.
     /// </summary>
     /// <param name="postId">The ID of the post to retrieve.</param>

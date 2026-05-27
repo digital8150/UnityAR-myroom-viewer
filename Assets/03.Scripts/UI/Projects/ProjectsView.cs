@@ -24,6 +24,12 @@ public class ProjectsView : MonoBehaviour
     [SerializeField]
     private Button _toGenerate3DButton;
 
+    [Header("Project Card Long Press Modal")]
+    [SerializeField] private GameObject _projectCardModal;
+    [SerializeField] private Button _projectCardModalCloseButton;
+    [SerializeField] private Button _projectCardModalDeleteButton;
+    [SerializeField] private Button _projectCardModalShareButton;
+
     [Header("Filter")]
     [SerializeField] private GameObject _filterPanel;
     [SerializeField] private Button _showFilter;
@@ -52,6 +58,11 @@ public class ProjectsView : MonoBehaviour
         if(_oldestButton) _oldestButton.onClick.AddListener(() => _presenter.OnOldestButtonClicked(_oldestButtonImage, _oldestButtonText));
         if(_resetFilterButton) _resetFilterButton.onClick.AddListener(_presenter.OnResetFilterButtonClicked);
         if(_applyFilterButton) _applyFilterButton.onClick.AddListener(_presenter.OnApplyFilterButtonClicked);
+
+        // Project Card Modal
+        if (_projectCardModalCloseButton) _projectCardModalCloseButton.onClick.AddListener(_presenter.OnProjectCardModalCloseClicked);
+        if (_projectCardModalDeleteButton) _projectCardModalDeleteButton.onClick.AddListener(_presenter.OnProjectCardModalDeleteClicked);
+        if (_projectCardModalShareButton) _projectCardModalShareButton.onClick.AddListener(_presenter.OnProjectCardModalShareClicked);
     }
 
     private void Start()
@@ -87,6 +98,11 @@ public class ProjectsView : MonoBehaviour
         if (_oldestButton) _oldestButton.onClick.RemoveAllListeners();
         if (_resetFilterButton) _resetFilterButton.onClick.RemoveAllListeners();
         if (_applyFilterButton) _applyFilterButton.onClick.RemoveAllListeners();
+
+        // Project Card Modal
+        if (_projectCardModalCloseButton) _projectCardModalCloseButton.onClick.RemoveAllListeners();
+        if (_projectCardModalDeleteButton) _projectCardModalDeleteButton.onClick.RemoveAllListeners();
+        if (_projectCardModalShareButton) _projectCardModalShareButton.onClick.RemoveAllListeners();
     }
     #endregion
 
@@ -186,6 +202,14 @@ public class ProjectsView : MonoBehaviour
             if(viewSlot) Destroy(viewSlot.gameObject);
         }
         _slotsViewList.Clear();
+    }
+
+    // ── Project Card Long Press Modal ──────────────────────
+
+    public void SetProjectCardModalActive(bool isActive)
+    {
+        if (_projectCardModal != null)
+            _projectCardModal.SetActive(isActive);
     }
 
     private void OnScrollChanged(Vector2 pos)

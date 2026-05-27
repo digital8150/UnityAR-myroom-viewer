@@ -30,6 +30,11 @@ public class CommunityView : MonoBehaviour
     [SerializeField] private NoImagePostView _noImagePostViewPrefab;
     [SerializeField] private WithImagePostView _withImagePostViewPrefab;
 
+    [Header("Inspect Page")]
+    [SerializeField] private ReadonlyProjectInspectView _inspectView;
+    [SerializeField] private GameObject _inspectPage;
+    public ReadonlyProjectInspectView InspectView => _inspectView;
+
     [Header("Components")]
     [SerializeField] private Button _returnButton;
     [SerializeField] private GameObject _verticalLayoutParent;
@@ -129,6 +134,8 @@ public class CommunityView : MonoBehaviour
         else
         {
             _presenter.LoadPage();
+            // 프로젝트 카드에서 공유하기로 이동한 경우 글쓰기 패널을 자동으로 띄움
+            _presenter.CheckAndHandlePendingModel3dId();
         }
     }
 
@@ -145,6 +152,17 @@ public class CommunityView : MonoBehaviour
             _commentInputField.onValueChanged.RemoveAllListeners();
             _commentInputField.onEndEdit.RemoveAllListeners();
         }
+    }
+
+    public void ShowInspectPage()
+    {
+        if (_inspectPage) _inspectPage.SetActive(true);
+    }
+
+    public void HideInspectPage()
+    {
+        if (_inspectPage) _inspectPage.SetActive(false);
+        if (_inspectView) _inspectView.Cleanup();
     }
 
     public void SetRefreshIndicatorAlpha(float alpha)

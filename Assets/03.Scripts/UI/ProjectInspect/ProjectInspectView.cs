@@ -251,11 +251,12 @@ public class ProjectInspectView : MonoBehaviour
 
     public bool GetIsPublicToggle()
     {
-        if(_isPublicToggle)
+        if(_isPublicToggle == null)
         {
-            return _isPublicToggle.isOn;
+            Debug.LogError("[ProjectInspectView.cs] Is Public Toggle is not assigned.", this);
+            return false;
         }
-        return false;
+        return _isPublicToggle.isOn;
     }
 
     public void SetCategoryButtonSelected(string selectedCategory)

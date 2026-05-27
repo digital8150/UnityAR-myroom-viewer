@@ -69,6 +69,11 @@ public class RoomPlanView : MonoBehaviour
     [SerializeField] private Button _backButton;
     [SerializeField] private Material _selectionIndicatorMaterial;
 
+    [Header("Demo")]
+    [Tooltip("켜져 있으면 세션 최초의 이미지 업로드 생성은 /api/fake-rooms 경로를 사용한다.")]
+    [SerializeField] private bool _isFake = false;
+
+    public bool IsFake => _isFake;
     public Material SelectionIndicatorMaterial => _selectionIndicatorMaterial;
     public Sprite DefaultProjectCardThumbnail => _defaultProjectCardThumbnail;
 

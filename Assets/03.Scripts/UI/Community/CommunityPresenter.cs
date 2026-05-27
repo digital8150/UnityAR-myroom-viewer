@@ -26,6 +26,7 @@ public class CommunityPresenter
     private bool _refreshTriggered = false;
     private bool _isShowingDetails = false;
     private bool _isShowingNewPost = false;
+    private bool _isShowingInspect = false;
 
     private int _selectedCategoryIndex = -1;
     private string _selectedScope = "PUBLIC";
@@ -45,6 +46,8 @@ public class CommunityPresenter
     private bool _currentLiked = false;
     private bool _isTogglingLike = false;
 
+    private int? _pendingModel3dId = null;
+
     private static readonly string[] CategoryApiValues = {"FURNITURE", "INTERIOR", "QUESTION", "REVIEW", "ETC" };
 
     public CommunityPresenter(CommunityView view, PostView postView)
@@ -57,6 +60,13 @@ public class CommunityPresenter
 
     public void OnReturnButtonClicked()
     {
+        if (_isShowingInspect)
+        {
+            _isShowingInspect = false;
+            _view.HideInspectPage();
+            return;
+        }
+
         if (_isShowingNewPost)
         {
             CloseNewPostPanel();
@@ -132,6 +142,7 @@ public class CommunityPresenter
         {
             (code, _) = await CommunityService.CreatePost(
                 title, content, category, scope,
+                model3dId: _pendingModel3dId,
                 images: _selectedImageBytes.Count > 0 ? _selectedImageBytes : null,
                 imageFileNames: _selectedImageFileNames.Count > 0 ? _selectedImageFileNames : null
             );
@@ -167,6 +178,7 @@ public class CommunityPresenter
         _selectedScope = "PUBLIC";
         _currentPostId = -1;
         _currentPostContent = null;
+        _pendingModel3dId = null;
     }
 
     private void SpawnEmptyPictureButton()
@@ -330,6 +342,95 @@ public class CommunityPresenter
         _pageIndex = 0;
         _isLastPage = false;
         LoadPage();
+    }
+
+    public async void OnModel3dInspectClicked(int model3dId)
+    {
+        PopupView.Instance.SetLoadingPannelActive(true);
+        try
+        {
+            ModelData modelData = await ModelService.GetModelDataByModelId(model3dId);
+            if (modelData == null)
+            {
+                PopupView.Instance.ShowMessage("모델 데이터를 불러오는 데 실패했습니다.");
+                return;
+            }
+
+            var (responseCode, modelPath) = await ProjectInspectService.GetModel3DFile(modelData.link);
+            if (responseCode != 200)
+            {
+                PopupView.Instance.ShowMessage("모델 파일을 불러오는 데 실패했습니다.");
+                return;
+            }
+
+            var (dimCode, dimJson) = await ProjectInspectService.GetModel3DDimension(modelData.id);
+            ModelDimension modelDimension = dimCode == 200
+                ? JsonConvert.DeserializeObject<ModelDimension>(dimJson)
+                : new ModelDimension();
+
+            _view.InspectView.SetContent(modelDimension, modelData);
+            _view.InspectView.SpawnModel3D(modelPath);
+            _view.ShowInspectPage();
+            _isShowingInspect = true;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+            PopupView.Instance.ShowMessage("상세 보기 로드 중 오류가 발생했습니다.");
+        }
+        finally
+        {
+            PopupView.Instance.SetLoadingPannelActive(false);
+        }
+    }
+
+    public async void OnModel3dARClicked(int model3dId)
+    {
+        PopupView.Instance.SetLoadingPannelActive(true);
+        try
+        {
+            ModelData modelData = await ModelService.GetModelDataByModelId(model3dId);
+            if (modelData == null)
+            {
+                PopupView.Instance.ShowMessage("모델 데이터를 불러오는 데 실패했습니다.");
+                return;
+            }
+
+            var (responseCode, modelPath) = await ProjectInspectService.GetModel3DFile(modelData.link);
+            if (responseCode != 200)
+            {
+                PopupView.Instance.ShowMessage("모델 파일을 불러오는 데 실패했습니다.");
+                return;
+            }
+
+            var (dimCode, dimJson) = await ProjectInspectService.GetModel3DDimension(modelData.id);
+            ModelDimension modelDimension = dimCode == 200
+                ? JsonConvert.DeserializeObject<ModelDimension>(dimJson)
+                : new ModelDimension();
+
+            ARPlaceCore.CurrentModelPath = modelPath;
+            ARPlaceCore.CurrentModelDimension = modelDimension;
+            SceneHistory.ChangeScene("ARPlace");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+            PopupView.Instance.ShowMessage("AR 실행 중 오류가 발생했습니다.");
+        }
+        finally
+        {
+            PopupView.Instance.SetLoadingPannelActive(false);
+        }
+    }
+
+    public void CheckAndHandlePendingModel3dId()
+    {
+        int pendingId = CommunityService.ConsumePendingModel3dId();
+        if (pendingId > 0)
+        {
+            _pendingModel3dId = pendingId;
+            OnWritePostButtonClicked();
+        }
     }
 
     public void OnShowFilterClicked()
@@ -527,6 +628,30 @@ public class CommunityPresenter
                 if (urls != null)
                     foreach (var url in urls)
                         _postView.AddContentImage(url);
+
+                if (postContent.model3dId.HasValue)
+                {
+                    int capturedModelId = postContent.model3dId.Value;
+                    string thumbnailUrl = null;
+                    ModelData modelData = null;
+                    try
+                    {
+                        modelData = await ModelService.GetModelDataByModelId(capturedModelId);
+                        thumbnailUrl = modelData?.thumbnailUrl;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[OpenDetail] 모델 데이터 로드 실패: {ex.Message}");
+                    }
+                    _postView.AddModel3dCard(
+                        capturedModelId,
+                        postContent.model3dName,
+                        onInspect: () => OnModel3dInspectClicked(capturedModelId),
+                        onAR: () => OnModel3dARClicked(capturedModelId),
+                        thumbnailUrl: thumbnailUrl,
+                        modelData: modelData
+                    );
+                }
 
                 RenderComments(postComments);
 

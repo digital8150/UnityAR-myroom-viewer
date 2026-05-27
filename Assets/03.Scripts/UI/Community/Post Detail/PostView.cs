@@ -12,6 +12,7 @@ public class PostView : MonoBehaviour
     [Header("Prefabs")]
     [SerializeField] private PostCommentView _commentViewPrefab;
     [SerializeField] private PostImageView _imageViewPrefab;
+    [SerializeField] private GalleryListItemView _galleryListItemViewPrefab;
 
     [Header("Components")]
     [SerializeField] private RectTransform _postDetailPanel;
@@ -22,6 +23,7 @@ public class PostView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _userNameText;
     [SerializeField] private TextMeshProUGUI _infoText;
     [SerializeField] private GameObject _imagesParent;
+    [SerializeField] private GameObject _modelInfoParent;
     [SerializeField] private Button _likeButton;
     [SerializeField] private Sprite _defaultLikeSprite;
     [SerializeField] private Sprite _filledLikeSprite;
@@ -117,14 +119,14 @@ public class PostView : MonoBehaviour
     public void ResetPostView()
     {
         foreach(Transform child in _imagesParent.transform)
-        {
-            GameObject.Destroy(child.gameObject);
-        }
+            Destroy(child.gameObject);
+
+        if (_modelInfoParent)
+            foreach (Transform child in _modelInfoParent.transform)
+                Destroy(child.gameObject);
 
         foreach(Transform child in _commentsParent.transform)
-        {
-            GameObject.Destroy(child.gameObject);
-        }
+            Destroy(child.gameObject);
 
         _postDetailScrollViewContent.verticalNormalizedPosition = 1f;
     }
@@ -145,6 +147,19 @@ public class PostView : MonoBehaviour
             var clone = Instantiate(_imageViewPrefab, _imagesParent.transform);
             clone.UpdateImage(contentImage);
         }
+    }
+
+    public void AddModel3dCard(int model3dId, string model3dName, Action onInspect, Action onAR, string thumbnailUrl = null, ModelData modelData = null)
+    {
+        if (!_galleryListItemViewPrefab) return;
+        var card = Instantiate(_galleryListItemViewPrefab, _modelInfoParent ? _modelInfoParent.transform : _imagesParent.transform);
+        var rt = card.GetComponent<RectTransform>();
+        if (rt) rt.sizeDelta = new Vector2(rt.sizeDelta.x, 73f);
+        card.SetTitleText(model3dName);
+        if (!string.IsNullOrEmpty(thumbnailUrl)) card.SetThumbnail(thumbnailUrl);
+        if (modelData != null) card.SetInfoTextWithDTO(modelData);
+        card.SetGoToInspectAction(() => onInspect?.Invoke());
+        card.SetGoToARAction(() => onAR?.Invoke());
     }
 
     public void AddComment(CommentDto commentDto, Action<int, string> replyCallback = null)

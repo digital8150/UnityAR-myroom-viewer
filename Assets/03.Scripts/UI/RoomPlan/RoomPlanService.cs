@@ -8,6 +8,12 @@ using Utils;
 public class RoomPlanService : BaseService
 {
     private static string BaseUrl => $"{Settings.BaseUrl}/api/room3d";
+    // Fake. 가짜 Room3D 단건 조회 - GET /api/fake-rooms/{fakeRoomId}
+    // 데모 플로우는 클라이언트에서 자체 처리하므로 단건 조회만 사용
+    public static async Task<(long responseCode, string jsonBody)> GetFakeRoom(long fakeRoomId)
+    {
+        return await SendRequest($"{Settings.BaseUrl}/api/fake-rooms/{fakeRoomId}", "GET");
+    }
 
     // 1. Room3D 단건 조회 - GET /api/room3d/{room3dId}
     public static async Task<(long responseCode, string jsonBody)> GetRoom3D(long room3dId)
