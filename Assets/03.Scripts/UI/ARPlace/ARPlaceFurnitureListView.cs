@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -93,7 +93,6 @@ public class ARPlaceFurnitureListView : MonoBehaviour
 
         int capturedId = data.id;
         clone.SetGoToARAction(() => _presenter.OnItemSelected(capturedId));
-        clone.SetGoToInspectAction(() => _presenter.OnItemSelected(capturedId));
 
         _items.Add(clone);
         return clone;

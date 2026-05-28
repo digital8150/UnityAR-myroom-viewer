@@ -39,7 +39,7 @@ public class ARPlacePresenter : IDisposable
 
     public void UpdateView()
     {
-        _view.SetShowDimensionButtonText($"가구 치수 보기 : {TranslateStateDimensionStatus()}");
+        _view.SetShowDimensionButtonText($"치수 보기 : {TranslateStateDimensionStatus()}");
     }
 
     //--- Button Handler ---//

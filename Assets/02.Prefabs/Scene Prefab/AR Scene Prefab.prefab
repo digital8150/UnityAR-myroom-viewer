@@ -5194,7 +5194,7 @@ LineRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 019a981cc5c63114c9bd1f1b0eab082d, type: 2}
+  - {fileID: 2100000, guid: 0eb178726a333144f88522a378d77447, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -5718,6 +5718,8 @@ MonoBehaviour:
   _shutterButton: {fileID: 6666928120376801348}
   _showDimensionButton: {fileID: 3601362015259923440}
   _showDimensionButtonText: {fileID: 4245104304583258092}
+  _showFurnitureListButton: {fileID: 0}
+  _furnitureListView: {fileID: 0}
   _arCamera: {fileID: 7542057313805839475}
   _flashOverlay: {fileID: 3766821485408108768}
   _flashHoldDuration: 0.08
@@ -6926,7 +6928,7 @@ LineRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 019a981cc5c63114c9bd1f1b0eab082d, type: 2}
+  - {fileID: 2100000, guid: 0eb178726a333144f88522a378d77447, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -7796,7 +7798,7 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8600456476695672846}
   m_Enabled: 1
-  m_Alpha: 1
+  m_Alpha: 0
   m_Interactable: 0
   m_BlocksRaycasts: 0
   m_IgnoreParentGroups: 0
@@ -7907,7 +7909,7 @@ LineRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 019a981cc5c63114c9bd1f1b0eab082d, type: 2}
+  - {fileID: 2100000, guid: 0eb178726a333144f88522a378d77447, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -8041,9 +8043,9 @@ MonoBehaviour:
   _arRaycastManager: {fileID: 8082177797586838409}
   _arPlaneManager: {fileID: 5120003407351547552}
   _occlusionManager: {fileID: 0}
+  _arCamera: {fileID: 0}
   _rotationSensitivity: 0.5
   _heightSensitivity: 0.001
-  _gestureThreshold: 20
   _showDimensions: 0
   _dimensionTextPrefab: {fileID: 1083671435520469797, guid: 8ca44b987c74ade43bb8a528b49bdf75, type: 3}
   _widthLine: {fileID: 3385712215906667290}
@@ -8051,6 +8053,10 @@ MonoBehaviour:
   _heightLine: {fileID: 7131694352040015679}
   _rotationDeadzone: 10
   _pinchDeadzone: 20
+  _outlineMaterial: {fileID: 0}
+  _furnitureLayer:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!1 &9087615673822561942
 GameObject:
   m_ObjectHideFlags: 0

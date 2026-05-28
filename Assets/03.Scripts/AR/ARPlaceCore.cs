@@ -1,4 +1,4 @@
-using GLTFast;
+﻿using GLTFast;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -66,6 +66,9 @@ public class ARPlaceCore : MonoBehaviour
 
     // Single-touch translation state
     private bool _singleTouchActsOnSelected;
+
+    // Pending placement state
+    private PlacedFurniture _pendingFurniture;
 
     // Dimension UI references
     private TMP_Text _widthText, _heightText, _lengthText;
@@ -142,22 +145,30 @@ public class ARPlaceCore : MonoBehaviour
     {
         if (_isModelLoading || string.IsNullOrEmpty(modelPath)) return;
 
-        Vector3 placePos;
+        if (_pendingFurniture != null)
+        {
+            Destroy(_pendingFurniture.Root);
+            _pendingFurniture = null;
+        }
+
         if (TryGetCenterPlanePosition(out var centerPos))
         {
-            placePos = centerPos;
-        }
-        else if (_arCamera != null)
-        {
-            placePos = _arCamera.transform.position + _arCamera.transform.forward * 1.0f;
+            var placed = await LoadModelAndPlace(modelPath, dimension, centerPos, Quaternion.identity);
+            if (placed != null)
+            {
+                RegisterPlaced(placed);
+                SelectFurniture(placed);
+            }
         }
         else
         {
-            placePos = transform.position;
-        }
+            // 평면 미감지 — 카메라 앞에 미리보기로 띄우고 pending 대기
+            Vector3 previewPos = _arCamera != null
+                ? _arCamera.transform.position + _arCamera.transform.forward * 1.0f
+                : transform.position;
 
-        var placed = await LoadModelAndPlace(modelPath, dimension, placePos, Quaternion.identity);
-        if (placed != null) SelectFurniture(placed);
+            _pendingFurniture = await LoadModelAndPlace(modelPath, dimension, previewPos, Quaternion.identity);
+        }
     }
 
     #endregion
@@ -195,6 +206,22 @@ public class ARPlaceCore : MonoBehaviour
         if (phase == UnityEngine.InputSystem.TouchPhase.Began)
         {
             _singleTouchActsOnSelected = false;
+
+            // pending 가구가 있으면 평면 탭 위치에 확정 배치
+            if (_pendingFurniture != null)
+            {
+                if (_arRaycastManager.Raycast(finger.screenPosition, _hits, TrackableType.PlaneWithinPolygon)
+                    && TryGetLowestHorizontalUp(out var pendingPos))
+                {
+                    var t = _pendingFurniture.Root.transform;
+                    t.position = new Vector3(pendingPos.x, pendingPos.y + _pendingFurniture.YOffsetFromPlane, pendingPos.z);
+                    RegisterPlaced(_pendingFurniture);
+                    SelectFurniture(_pendingFurniture);
+                    _pendingFurniture = null;
+                    _singleTouchActsOnSelected = true;
+                }
+                return;
+            }
 
             // 1) 가구 콜라이더 픽 시도
             var picked = PickFurnitureAtScreen(finger.screenPosition);
@@ -252,7 +279,18 @@ public class ARPlaceCore : MonoBehaviour
     private async System.Threading.Tasks.Task PlaceAndSelect(string path, ModelDimension dim, Vector3 pos)
     {
         var placed = await LoadModelAndPlace(path, dim, pos, Quaternion.identity);
-        if (placed != null) SelectFurniture(placed);
+        if (placed != null)
+        {
+            RegisterPlaced(placed);
+            SelectFurniture(placed);
+        }
+    }
+
+    private void RegisterPlaced(PlacedFurniture placed)
+    {
+        _placedFurnitures.Add(placed);
+        if (_placedFurnitures.Count == 1)
+            OnFirstFurniturePlaced?.Invoke();
     }
 
     private void HandleDoubleTouch()
@@ -498,11 +536,7 @@ public class ARPlaceCore : MonoBehaviour
                     OriginalMaterials = originalMats,
                 };
 
-                _placedFurnitures.Add(placed);
-                if (_placedFurnitures.Count == 1)
-                {
-                    OnFirstFurniturePlaced?.Invoke();
-                }
+
             }
             else
             {
